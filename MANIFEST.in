@@ -1,0 +1,12 @@
+include AUTHORS
+include INSTALL
+include LICENSE
+include MANIFEST.in
+include README
+include README.rst
+include THANKS
+include TODO
+include Changelog
+recursive-include doc *
+recursive-include src/callme *.py
+
