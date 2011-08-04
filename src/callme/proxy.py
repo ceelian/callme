@@ -8,7 +8,6 @@ from kombu.utils import gen_unique_id
 
 from protocol import RpcRequest
 from protocol import RpcResponse
-from protocol import MyException
 
 class Proxy(object):
 	
@@ -21,6 +20,7 @@ class Proxy(object):
 				amqp_user ='guest',
 				amqp_password='guest',
 				amqp_vhost='/',
+				amqp_port=5672,
 				ssl=False):
 		
 		self.logger = logging.getLogger('callme.proxy')
@@ -29,7 +29,9 @@ class Proxy(object):
 		self.connection = BrokerConnection(hostname=amqp_host,
                               userid=amqp_user,
                               password=amqp_password,
-                              virtual_host=amqp_vhost)
+                              virtual_host=amqp_vhost,
+                              port=amqp_port,
+                              ssl=ssl)
 		channel = self.connection.channel()
 		
 		target_exchange = Exchange("callme_target", "direct", durable=False)	

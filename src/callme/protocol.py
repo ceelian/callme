@@ -9,5 +9,3 @@ class RpcResponse(object):
 		self.result = result
 		self.exception_raised=exception_raised 
 		
-class MyException(Exception):
-	pass

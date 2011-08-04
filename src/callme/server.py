@@ -7,28 +7,37 @@ from protocol import RpcResponse
 
 class Server(object):
 	
-	func_dict={}
+	
 	def __init__(self, 
 				server_id,
 				amqp_host='localhost', 
 				amqp_user ='guest',
 				amqp_password='guest',
 				amqp_vhost='/',
+				amqp_port=5672,
 				ssl=False):
 		self.logger = logging.getLogger('callme.server')
+		self.logger.debug('Server ID: %s' % server_id)
+		self.server_id = server_id
 		self.do_run = True
+		self.func_dict={}
 		target_exchange = Exchange("callme_target", "direct", durable=False)	
-		target_queue = Queue(server_id, exchange=target_exchange, 
+		self.target_queue = Queue(server_id, exchange=target_exchange, 
 							routing_key=server_id, auto_delete=True,
 							durable=False)
 		src_exchange = Exchange("callme_src", "direct", durable=False)
 		
 		
-		self.connection = BrokerConnection(amqp_host, amqp_user, amqp_password, amqp_vhost)
+		self.connection = BrokerConnection(hostname=amqp_host,
+                              userid=amqp_user,
+                              password=amqp_password,
+                              virtual_host=amqp_vhost,
+                              port=amqp_port,
+                              ssl=ssl)
 		channel = self.connection.channel()
 		
 		# consume
-		self.consumer = Consumer(channel, target_queue)
+		self.consumer = Consumer(channel, self.target_queue)
 		self.consumer.register_callback(self.on_request)
 		self.consumer.consume()
 		
@@ -46,7 +55,7 @@ class Server(object):
 			self.logger.debug('Not an RpcRequest Instance')
 			return
 		
-		self.logger.debug('Call func on Server')
+		self.logger.debug('Call func on Server %s' %self.server_id)
 		try:
 			self.logger.debug('corr_id: %s' % message.properties['correlation_id'])
 			self.logger.debug('Call func with args %s' % repr(rpc_req.func_args))
@@ -81,6 +90,7 @@ class Server(object):
 				pass
 		
 		self.consumer.cancel()
+		self.connection.close()
 			
 	def stop(self):
 		self.do_run = False
