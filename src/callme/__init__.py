@@ -7,4 +7,5 @@ __homepage__ = "http://packages.python.org/callme"
 __docformat__ = "restructuredtext"
 
 
-from callme import *
+from server import Server
+from proxy import Proxy
