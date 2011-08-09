@@ -40,6 +40,97 @@ class ActionsTestCase(unittest.TestCase):
 		
 		
 		
+	def test_threaded_method_call(self):
+		from time import sleep
+		
+		def madd(a):
+			#print "T: %d" %a
+			sleep(1)
+			return a 
+		
+		server = callme.Server(server_id='fooserver',
+							amqp_host ='localhost', 
+							amqp_user ='guest',
+							amqp_password='guest',
+							threaded=True)
+		server.register_function(madd, 'madd')
+		p = Thread(target=server.start)
+		p.start()
+		
+		def threaded_call(i):
+			proxy = callme.Proxy(amqp_host ='localhost', 
+								amqp_user ='guest',
+								amqp_password='guest')
+			
+			res = proxy.use_server('fooserver', timeout=0).madd(i)
+			self.assertEqual(res, i)
+		
+		threads = []
+		for i in range(10):
+			t = Thread(target=threaded_call, args=(i,))
+			t.start()
+			threads.append(t)
+		
+		#wait until all threads are finished
+		ready = False
+		while not ready:
+			all_finished = True
+			for t in threads:
+				if t.is_alive() == True:
+					all_finished = False
+			if all_finished == True:
+				ready = True
+		
+		
+		server.stop()
+		p.join()
+		
+		
+	def test_half_threaded_method_call(self):
+		from time import sleep
+		
+		def madd(a):
+			#print "T: %d" %a
+			sleep(0.1)
+			return a 
+		
+		server = callme.Server(server_id='fooserver',
+							amqp_host ='localhost', 
+							amqp_user ='guest',
+							amqp_password='guest',
+							threaded=False)
+		server.register_function(madd, 'madd')
+		p = Thread(target=server.start)
+		p.start()
+		
+		def threaded_call(i):
+			proxy = callme.Proxy(amqp_host ='localhost', 
+								amqp_user ='guest',
+								amqp_password='guest')
+			
+			res = proxy.use_server('fooserver', timeout=0).madd(i)
+			self.assertEqual(res, i)
+		
+		threads = []
+		for i in range(3):
+			t = Thread(target=threaded_call, args=(i,))
+			t.start()
+			threads.append(t)
+		
+		#wait until all threads are finished
+		ready = False
+		while not ready:
+			all_finished = True
+			for t in threads:
+				if t.is_alive() == True:
+					all_finished = False
+			if all_finished == True:
+				ready = True
+		
+		
+		server.stop()
+		p.join()
+		
 	def test_double_method_call(self):
 		
 		def madd(a, b):
