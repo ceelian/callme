@@ -21,7 +21,8 @@ class Proxy(object):
 				amqp_password='guest',
 				amqp_vhost='/',
 				amqp_port=5672,
-				ssl=False):
+				ssl=False,
+				timeout=0):
 		
 		self.logger = logging.getLogger('callme.proxy')
 		self.timeout = 0
@@ -33,7 +34,7 @@ class Proxy(object):
                               port=amqp_port,
                               ssl=ssl)
 		channel = self.connection.channel()
-		
+		self.timeout = timeout
 		target_exchange = Exchange("callme_target", "direct", durable=False)	
 		self.reply_id = gen_unique_id()
 		self.logger.debug("Queue ID: %s" %self.reply_id)
@@ -60,9 +61,11 @@ class Proxy(object):
 			self.is_received = True
 			message.ack()
 		
-	def use_server(self, server_id, timeout=0):
-		self.server_id = server_id
-		self.timeout = timeout
+	def use_server(self, server_id=None, timeout=None):
+		if server_id != None:
+			self.server_id = server_id
+		if timeout !=None:
+			self.timeout = timeout
 		return self
 	
 	

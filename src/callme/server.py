@@ -50,7 +50,6 @@ class Server(object):
 		self.logger.debug('Got Request')
 		rpc_req = body
 		
-		
 		if not isinstance(rpc_req, RpcRequest):
 			self.logger.debug('Not an RpcRequest Instance')
 			return
