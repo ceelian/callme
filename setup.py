@@ -29,6 +29,7 @@ setup(
     version = callme.__version__,
     packages = find_packages('src'),
     package_dir = {'':'src'},
+    install_requires = ['kombu>=1.2.1'],
   
     # metadata for upload to PyPI
     author = callme.__author__,
