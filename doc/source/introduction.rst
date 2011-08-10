@@ -60,7 +60,7 @@ Even if the Server is not thread-safe itself, it has the capability
 to use multi-threading. For each RPC Call a worker thread is started
 which significantly improves the call speed if
 multiple clients are calling the server simultaneously. To activate
-multi-threading on the server pass ``threading=True``to the Server class.
+multi-threading on the server pass ``threading=True`` to the Server class.
 
 
 Permissions
@@ -108,7 +108,7 @@ Architecture
 ------------
 
 Callme uses kombu for communication between Proxy and Server. Callme transfers
-instances of the :class:`RpcResponse` and :class:`RpcRequest` to execute remote
+instances of the `RpcResponse` and `RpcRequest` to execute remote
 procedure calls (RPC). The instances of these classes are pickled by kombu and
 then transfered to the server or proxy.
 

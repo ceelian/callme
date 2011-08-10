@@ -41,6 +41,9 @@ in the shell::
 	git tag -a vX.X.X
 	git push --tags
 	
+	#first time you need to register the package
+	python setup.py register
+	
 	# upload to pypi
 	python setup.py sdist upload
 	

@@ -15,6 +15,7 @@ from protocol import RpcResponse
 from threading import Thread
 from protocol import ConnectionError
 import socket
+from time import sleep
 
 class Server(object):
 	"""
@@ -48,6 +49,7 @@ class Server(object):
 		self.server_id = server_id
 		self.threaded = threaded
 		self.do_run = True
+		self.is_stopped = True
 		self.func_dict={}
 		self.result_queue = queue.Queue()
 		target_exchange = Exchange("server_"+server_id+"_ex", "direct", durable=False,
@@ -193,20 +195,35 @@ class Server(object):
 		Starts the server. If `threaded` is `True` also starts the Publisher 
 		thread.
 		"""
+		self.is_stopped = False
 		if self.threaded == True:
 			self.pub_thread = Publisher(self.result_queue, self.publish_channel)
 			self.pub_thread.start()
 			
 		while self.do_run:
 			try:
+				self.logger.debug("drain_events: %s" % repr(self.do_run))
 				self.connection.drain_events(timeout=1)
 			except socket.timeout:
 				self.logger.debug("do_run: %s" % repr(self.do_run))
-				pass
+			except:
+				self.logger.debug("interrupt exception" )
+				if self.threaded == True:
+					self.pub_thread.stop()
+				self.consumer.cancel()
+				self.connection.close()
+				self.publish_connection.close()
+				self.is_stopped = True
+				return
 			
+		if self.threaded == True:
+			self.pub_thread.stop()
+		self.logger.debug("Normal Exit" )
 		self.consumer.cancel()
 		self.connection.close()
 		self.publish_connection.close()
+		self.logger.debug("All closed" )
+		self.is_stopped = True
 		
 	def stop(self):
 		"""
@@ -214,8 +231,10 @@ class Server(object):
 		"""
 		self.logger.debug('Stop server')
 		self.do_run = False
-		if self.threaded == True:
-			self.pub_thread.stop()
+		while not self.is_stopped:
+			self.logger.debug('wait for stop')
+			sleep(0.1)
+		
 		
 class Publisher(Thread):
 	"""
