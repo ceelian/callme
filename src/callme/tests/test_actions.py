@@ -39,6 +39,29 @@ class ActionsTestCase(unittest.TestCase):
 		p.join()
 		
 		
+	def test_secured_method_call(self):
+		#client amqp user s1
+		#server amqp user s2
+		
+		def madd(a, b):
+			return a + b
+		
+		server = callme.Server(server_id='fooserver',
+							amqp_host ='localhost', 
+							amqp_user ='s1',
+							amqp_password='s1')
+		server.register_function(madd, 'madd')
+		p = Thread(target=server.start)
+		p.start()
+		
+		proxy = callme.Proxy(amqp_host ='localhost', 
+							amqp_user ='c1',
+							amqp_password='c1')
+		
+		res = proxy.use_server('fooserver', timeout=0).madd(1,1)
+		self.assertEqual(res, 2)
+		server.stop()
+		p.join()
 		
 	def test_threaded_method_call(self):
 		from time import sleep
@@ -161,8 +184,10 @@ class ActionsTestCase(unittest.TestCase):
 		
 	def test_timeout_call(self):
 		
-		def madd(a, b):
-			return a + b
+		server = callme.Server(server_id='fooserver',
+							amqp_host ='localhost', 
+							amqp_user ='guest',
+							amqp_password='guest')
 		
 		proxy = callme.Proxy(amqp_host ='localhost', 
 							amqp_user ='guest',
@@ -170,6 +195,7 @@ class ActionsTestCase(unittest.TestCase):
 		
 		self.assertRaises(socket.timeout,
 						proxy.use_server('fooserver', timeout=1).madd, 1, 2)
+		
 		
 	
 	def test_remote_exception(self):

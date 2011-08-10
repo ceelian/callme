@@ -6,6 +6,7 @@ import Queue as queue
 from protocol import RpcRequest
 from protocol import RpcResponse
 from threading import Thread
+from protocol import ConnectionError
 
 class Server(object):
 	
@@ -26,11 +27,11 @@ class Server(object):
 		self.do_run = True
 		self.func_dict={}
 		self.result_queue = queue.Queue()
-		target_exchange = Exchange("callme_target", "direct", durable=False)	
-		self.target_queue = Queue(server_id, exchange=target_exchange, 
-							routing_key=server_id, auto_delete=True,
-							durable=False)
-		src_exchange = Exchange("callme_src", "direct", durable=False)
+		target_exchange = Exchange("server_"+server_id+"_ex", "direct", durable=False,
+								auto_delete=True)	
+		self.target_queue = Queue("server_"+server_id+"_queue", exchange=target_exchange, 
+							auto_delete=True, durable=False)
+		
 		
 		
 		self.connection = BrokerConnection(hostname=amqp_host,
@@ -39,7 +40,13 @@ class Server(object):
                               virtual_host=amqp_vhost,
                               port=amqp_port,
                               ssl=ssl)
-		channel = self.connection.channel()
+		try:
+			self.connection.connect()
+		except IOError:
+			self.logger.critical("Connection Error: Probably AMQP User has not enough permissions")
+			raise ConnectionError("Connection Error: Probably AMQP User has not enough permissions")
+		
+		self.channel = self.connection.channel()
 		
 		self.publish_connection = BrokerConnection(hostname=amqp_host,
                               userid=amqp_user,
@@ -47,10 +54,10 @@ class Server(object):
                               virtual_host=amqp_vhost,
                               port=amqp_port,
                               ssl=ssl)
-		publish_channel = self.publish_connection.channel()
+		self.publish_channel = self.publish_connection.channel()
 		
 		# consume
-		self.consumer = Consumer(channel, self.target_queue)
+		self.consumer = Consumer(self.channel, self.target_queue)
 		if self.threaded == True:
 			self.consumer.register_callback(self.on_request_threaded)
 		else:
@@ -58,8 +65,7 @@ class Server(object):
 		self.consumer.consume()
 		
 		
-		# producer 
-		self.producer = Producer(publish_channel, src_exchange)
+
 		self.logger.debug('Init done')
 		
 	def on_request(self, body, message):
@@ -87,9 +93,13 @@ class Server(object):
 		message.ack()
 		
 		self.logger.debug('Publish respnse')
+		# producer 
+		src_exchange = Exchange(message.properties['reply_to'], "direct", durable=False,
+							auto_delete=True)
+		self.producer = Producer(self.publish_channel, src_exchange, auto_declare=False)
+		
 		self.producer.publish(rpc_resp, serializer="pickle",
-							correlation_id=message.properties['correlation_id'],
-							routing_key=message.properties['reply_to'])
+							correlation_id=message.properties['correlation_id'])
 		
 		self.logger.debug('acknowledge')
 		
@@ -137,7 +147,7 @@ class Server(object):
 	def start(self):
 		
 		if self.threaded == True:
-			self.pub_thread = Publisher(self.result_queue, self.producer)
+			self.pub_thread = Publisher(self.result_queue, self.publish_channel)
 			self.pub_thread.start()
 			
 		while self.do_run:
@@ -159,11 +169,11 @@ class Server(object):
 		
 class Publisher(Thread):
 	
-	def __init__(self, result_queue, producer):
+	def __init__(self, result_queue, channel):
 		Thread.__init__(self)
 		self.logger = logging.getLogger('callme.server')
 		self.result_queue = result_queue
-		self.producer = producer
+		self.channel = channel
 		self.stopp_it = False
 		
 	def run(self):
@@ -171,9 +181,14 @@ class Publisher(Thread):
 			try:
 				result_set = self.result_queue.get(block=True, timeout=1)
 				self.logger.debug('Publish respnse: %s'%repr(result_set))
-				self.producer.publish(result_set.rpc_resp, serializer="pickle",
-							correlation_id=result_set.correlation_id,
-							routing_key=result_set.reply_to)
+		
+				src_exchange = Exchange(result_set.reply_to, "direct", durable=False,
+							auto_delete=True)
+				producer = Producer(self.channel, src_exchange, auto_declare=False)
+				
+				producer.publish(result_set.rpc_resp, serializer="pickle",
+									correlation_id=result_set.correlation_id)
+				
 			except queue.Empty:
 				pass
 			

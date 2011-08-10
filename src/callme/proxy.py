@@ -33,24 +33,23 @@ class Proxy(object):
                               virtual_host=amqp_vhost,
                               port=amqp_port,
                               ssl=ssl)
-		channel = self.connection.channel()
+		self.channel = self.connection.channel()
 		self.timeout = timeout
-		target_exchange = Exchange("callme_target", "direct", durable=False)	
-		self.reply_id = gen_unique_id()
+		my_uuid = gen_unique_id()
+		self.reply_id = "client_"+amqp_user+"_ex_" + my_uuid
 		self.logger.debug("Queue ID: %s" %self.reply_id)
-		src_exchange = Exchange("callme_src", "direct", durable=False)
-		src_queue = Queue(self.reply_id, exchange=src_exchange, 
-						routing_key=self.reply_id, auto_delete=True,
+		src_exchange = Exchange(self.reply_id, "direct", durable=False 
+							,auto_delete=True)
+		src_queue = Queue("client_"+amqp_user+"_queue_"+my_uuid, exchange=src_exchange, 
+						auto_delete=True,
 						durable=False)
 		
 		# must declare in advance so reply message isn't
    		# published before.
-		src_queue(channel).declare()
+		src_queue(self.channel).declare()
 		
 		
-		self.producer = Producer(channel=channel, exchange=target_exchange)
-		
-		consumer = Consumer(channel=channel, queues=src_queue, callbacks=[self.on_response])
+		consumer = Consumer(channel=self.channel, queues=src_queue, callbacks=[self.on_response])
 		consumer.consume()		
 		
 	def on_response(self, body, message):
@@ -86,6 +85,11 @@ class Proxy(object):
 		def panic():
 			print "PANIC"
 			self.connection.ioloop.stop()
+			
+		target_exchange = Exchange("server_"+self.server_id+"_ex", "direct", durable=False,
+								auto_delete=True)
+		self.producer = Producer(channel=self.channel, exchange=target_exchange,
+								auto_declare=False)
 		
 		rpc_req = RpcRequest(methodname, params)
 		self.corr_id = str(uuid.uuid4())
@@ -93,8 +97,7 @@ class Proxy(object):
 		self.logger.debug('corr_id: %s' % self.corr_id)
 		self.producer.publish(rpc_req, serializer="pickle",
 							reply_to=self.reply_id,
-							correlation_id=self.corr_id,
-							routing_key=self.server_id)
+							correlation_id=self.corr_id)
 		self.logger.debug('Producer published')
 		
 		self._wait_for_result()
