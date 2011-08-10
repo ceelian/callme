@@ -2,6 +2,9 @@
 Development of callme
 ================================================================
 
+Developement of Callme happens on Github https://github.com/ceelian/callme.
+Feel free to contribute.
+
 Preparing packaging and distribution
 ------------------------------------
 
@@ -9,12 +12,9 @@ Test everything
 +++++++++++++++
 	
 in the shell::
-	
-	cd doc
-	make doctest
-	
+		
 	cd src/callme/tests
-	python __init__.py
+	python test_actions.py
 	
 	
 Change Version

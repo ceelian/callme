@@ -5,7 +5,6 @@ import unittest
 import callme
 import sys
 import logging
-#from multiprocessing import Process
 import socket
 from threading import Thread
 
@@ -40,8 +39,8 @@ class ActionsTestCase(unittest.TestCase):
 		
 		
 	def test_secured_method_call(self):
-		#client amqp user s1
-		#server amqp user s2
+		print "IMPORTANT: If this testcase fail you probably haven't setup " \
+			+ "your localhost broker with the init_rabbitmq.sh script"
 		
 		def madd(a, b):
 			return a + b
@@ -67,7 +66,6 @@ class ActionsTestCase(unittest.TestCase):
 		from time import sleep
 		
 		def madd(a):
-			#print "T: %d" %a
 			sleep(1)
 			return a 
 		
@@ -88,6 +86,7 @@ class ActionsTestCase(unittest.TestCase):
 			res = proxy.use_server('fooserver', timeout=0).madd(i)
 			self.assertEqual(res, i)
 		
+		#start 10 threads who call "parallel"
 		threads = []
 		for i in range(10):
 			t = Thread(target=threaded_call, args=(i,))
@@ -134,6 +133,7 @@ class ActionsTestCase(unittest.TestCase):
 			res = proxy.use_server('fooserver', timeout=0).madd(i)
 			self.assertEqual(res, i)
 		
+		#start 3 threads who call "parallel"
 		threads = []
 		for i in range(3):
 			t = Thread(target=threaded_call, args=(i,))
@@ -221,8 +221,8 @@ class ActionsTestCase(unittest.TestCase):
 		p.join()
 		
 	def test_ssl_method_call(self):
-		
-		
+		print "IMPORTANT: If this testcase fail you probably haven't setup " \
+			+ "your localhost broker with server-side SSL"
 		
 		def madd(a, b):
 			return a + b

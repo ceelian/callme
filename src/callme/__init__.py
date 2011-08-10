@@ -1,5 +1,5 @@
-"""flatty - marshaller/unmarshaller for light-schema python objects"""
-VERSION = (0, 0, 1)
+"""Callme - A python RPC module based on AMQP"""
+VERSION = (0, 1, 0)
 __version__ = ".".join(map(str, VERSION))
 __author__ = "Christian Haintz"
 __contact__ = "christian.haintz@orangelabs.at"

@@ -19,7 +19,8 @@ import sys, os
 #sys.path.append(os.path.abspath('.'))
 sys.path.insert(0, "../../")
 sys.path.insert(0, "../../src")
-import callme
+import callme.proxy
+import callme.server
 
 
 # -- General configuration -----------------------------------------------------
@@ -103,7 +104,7 @@ html_theme = 'default'
 #html_theme_options = {}
 
 # Add any paths that contain custom themes here, relative to this directory.
-#html_theme_path = []
+#html_theme_path = ['themes']
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -132,7 +133,7 @@ html_static_path = ['_static']
 
 # If true, SmartyPants will be used to convert quotes and dashes to
 # typographically correct entities.
-#html_use_smartypants = True
+html_use_smartypants = True
 
 # Custom sidebar templates, maps document names to template names.
 #html_sidebars = {}
