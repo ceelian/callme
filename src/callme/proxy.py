@@ -137,14 +137,15 @@ class Proxy(object):
 		
 		self._wait_for_result()
 		
-		if self.response.exception_raised:
-			raise self.response.result
-		
 		self.logger.debug('Result: %s' % repr(self.response.result))
 		res = self.response.result
 		self.response.result = None
 		self.is_received = False
-		return res
+
+		if self.response.exception_raised:
+                        raise res
+                else:
+                        return res
 		
 	def _wait_for_result(self):
 		"""
