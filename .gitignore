@@ -4,3 +4,4 @@
 *.egg-info
 dummy.py
 *.log
+/.idea
