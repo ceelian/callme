@@ -14,6 +14,8 @@ from kombu.utils import gen_unique_id
 from protocol import RpcRequest
 from protocol import RpcResponse
 
+LOG = logging.getLogger(__name__)
+
 
 class Proxy(object):
     """
@@ -42,7 +44,6 @@ class Proxy(object):
                  ssl=False,
                  timeout=0):
 
-        self.logger = logging.getLogger('callme.proxy')
         self.timeout = 0
         self.is_received = False
         self.connection = BrokerConnection(hostname=amqp_host,
@@ -55,7 +56,7 @@ class Proxy(object):
         self.timeout = timeout
         my_uuid = gen_unique_id()
         self.reply_id = "client_"+amqp_user+"_ex_" + my_uuid
-        self.logger.debug("Queue ID: %s" % self.reply_id)
+        LOG.debug("Queue ID: %s" % self.reply_id)
         src_exchange = Exchange(self.reply_id, "direct", durable=False,
                                 auto_delete=True)
         src_queue = Queue("client_"+amqp_user+"_queue_"+my_uuid, durable=False,
@@ -76,7 +77,7 @@ class Proxy(object):
         result
 
         :param body: the body of the amqp message already unpickled by kombu
-        :param message: the plain amqp kombu.message with aditional information
+        :param message: the plain amqp kombu.message with additional information
         """
 
         if self.corr_id == message.properties['correlation_id'] and \
@@ -112,12 +113,12 @@ class Proxy(object):
         :param methodname: name of the method that should be executed
         :param params: parameter for the remote-method
         :type methodname: string
-        :type param: list of parameters
+        :type params: list of parameters
         :rtype: result of the method
         """
-        self.logger.debug('Request: %r; Params: %r' % (methodname, params))
+        LOG.debug("Request: %r; Params: %r" % (methodname, params))
 
-        target_exchange = Exchange("server_"+self.server_id+"_ex", "direct",
+        target_exchange = Exchange("server_"+self.server_id+"_ex", 'direct',
                                    durable=False, auto_delete=True)
         self.producer = Producer(channel=self.channel,
                                  exchange=target_exchange,
@@ -125,16 +126,16 @@ class Proxy(object):
 
         rpc_req = RpcRequest(methodname, params)
         self.corr_id = str(uuid.uuid4())
-        self.logger.debug('RpcRequest build')
-        self.logger.debug('corr_id: %s' % self.corr_id)
-        self.producer.publish(rpc_req, serializer="pickle",
+        LOG.debug("RpcRequest build")
+        LOG.debug("Correlation id: %s" % self.corr_id)
+        self.producer.publish(rpc_req, serializer='pickle',
                               reply_to=self.reply_id,
                               correlation_id=self.corr_id)
-        self.logger.debug('Producer published')
+        LOG.debug("Producer published")
 
         self._wait_for_result()
 
-        self.logger.debug('Result: %s' % repr(self.response.result))
+        LOG.debug("Result: %r" % self.response.result)
         res = self.response.result
         self.response.result = None
         self.is_received = False
@@ -147,14 +148,14 @@ class Proxy(object):
     def _wait_for_result(self):
         """
         Waits for the result from the server, checks every second if a timeout
-        occurred. If a timeout occurs a `socket.timout` exception will be
+        occurred. If a timeout occurs a `socket.timeout` exception will be
         raised.
         """
         seconds_elapsed = 0
         while not self.is_received:
             try:
-                self.logger.debug('drain events... timeout=%d, counter=%d'
-                                  % (self.timeout, seconds_elapsed))
+                LOG.debug("Draining events... timeout=%d, counter=%d" %
+                          (self.timeout, seconds_elapsed))
                 self.connection.drain_events(timeout=1)
             except socket.timeout:
                 if self.timeout > 0:
@@ -169,7 +170,7 @@ class Proxy(object):
         be called on the Server.
         """
         # magic method dispatcher
-        self.logger.debug('Recursion: ' + name)
+        LOG.debug("Recursion: " + name)
         return _Method(self.__request, name)
 
 #===========================================================================

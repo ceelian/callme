@@ -16,6 +16,8 @@ from protocol import ConnectionError
 import socket
 from time import sleep
 
+LOG = logging.getLogger(__name__)
+
 
 class Server(object):
     """
@@ -42,8 +44,7 @@ class Server(object):
                  amqp_port=5672,
                  ssl=False,
                  threaded=False):
-        self.logger = logging.getLogger('callme.server')
-        self.logger.debug('Server ID: %s' % server_id)
+        LOG.debug("Server ID: %s" % server_id)
         self.server_id = server_id
         self.threaded = threaded
         self.do_run = True
@@ -65,10 +66,10 @@ class Server(object):
         try:
             self.connection.connect()
         except IOError:
-            self.logger.critical("Connection Error: Probably AMQP User has"
-                                 " not enough permissions")
+            LOG.critical("Connection Error: Probably AMQP User has"
+                         " not enough permissions")
             raise ConnectionError("Connection Error: Probably AMQP User has"
-                                  "not enough permissions")
+                                  " not enough permissions")
 
         self.channel = self.connection.channel()
 
@@ -88,7 +89,7 @@ class Server(object):
             self.consumer.register_callback(self._on_request)
         self.consumer.consume()
 
-        self.logger.debug('Init done')
+        LOG.debug("Initialization done")
 
     def _on_request(self, body, message):
         """
@@ -100,43 +101,42 @@ class Server(object):
         :param message: the plain amqp kombu.message with additional
         information
         """
-        self.logger.debug('Got Request')
+        LOG.debug("Got request")
         rpc_req = body
 
         if not isinstance(rpc_req, RpcRequest):
-            self.logger.debug('Not an RpcRequest Instance')
+            LOG.debug("Request is not an RpcRequest instance")
             return
 
-        self.logger.debug('Call func on Server %s' % self.server_id)
+        LOG.debug("Call func on server %s" % self.server_id)
         try:
-            self.logger.debug('corr_id: %s' %
-                              message.properties['correlation_id'])
-            self.logger.debug('Call func with args %s' %
-                              repr(rpc_req.func_args))
+            LOG.debug("Correlation id: %s" %
+                      message.properties['correlation_id'])
+            LOG.debug("Call func with args %r" % rpc_req.func_args)
 
             result = self.func_dict[rpc_req.func_name](*rpc_req.func_args)
 
-            self.logger.debug('Result: %s' % repr(result))
-            self.logger.debug('Build response')
+            LOG.debug("Result: %r" % result)
+            LOG.debug("Build response")
             rpc_resp = RpcResponse(result)
         except Exception as e:
-            self.logger.debug('exception happened')
+            LOG.debug("Exception happened: %s" % e)
             rpc_resp = RpcResponse(e, exception_raised=True)
 
         message.ack()
 
-        self.logger.debug('Publish response')
+        LOG.debug("Publish response")
         # producer
-        src_exchange = Exchange(message.properties['reply_to'], "direct",
+        src_exchange = Exchange(message.properties['reply_to'], 'direct',
                                 durable=False, auto_delete=True)
         self.producer = Producer(self.publish_channel, src_exchange,
                                  auto_declare=False)
 
         self.producer.publish(
-            rpc_resp, serializer="pickle",
+            rpc_resp, serializer='pickle',
             correlation_id=message.properties['correlation_id'])
 
-        self.logger.debug('acknowledge')
+        LOG.debug("Acknowledge")
 
     def _on_request_threaded(self, body, message):
         """
@@ -149,31 +149,30 @@ class Server(object):
         :param message: the plain amqp kombu.message with additional
         information
         """
-        self.logger.debug('Got Request')
+        LOG.debug("Got request")
         rpc_req = body
 
         if not isinstance(rpc_req, RpcRequest):
-            self.logger.debug('Not an RpcRequest Instance')
+            LOG.debug("Request is not an RpcRequest instance")
             return
 
         message.ack()
-        self.logger.debug('acknowledge')
+        LOG.debug("Acknowledge")
 
         def exec_func(body, message, result_queue):
-            self.logger.debug('Call func on Server %s' % self.server_id)
+            LOG.debug("Call func on server %s" % self.server_id)
             try:
-                self.logger.debug('corr_id: %s' %
-                                  message.properties['correlation_id'])
-                self.logger.debug('Call func with args %s' %
-                                  repr(rpc_req.func_args))
+                LOG.debug("Correlation id: %s" %
+                          message.properties['correlation_id'])
+                LOG.debug("Call func with args %r" % rpc_req.func_args)
 
                 result = self.func_dict[rpc_req.func_name](*rpc_req.func_args)
 
-                self.logger.debug('Result: %s' % repr(result))
-                self.logger.debug('Build response')
+                LOG.debug("Result: %r" % result)
+                LOG.debug("Build response")
                 rpc_resp = RpcResponse(result)
             except Exception as e:
-                self.logger.debug('exception happened')
+                LOG.debug("Exception happened: %s" % e)
                 rpc_resp = RpcResponse(e, exception_raised=True)
 
             result_queue.put(ResultSet(rpc_resp,
@@ -208,12 +207,12 @@ class Server(object):
 
         while self.do_run:
             try:
-                self.logger.debug("drain_events!!!: %s" % repr(self.do_run))
+                LOG.debug("Draining events: %s" % self.do_run)
                 self.connection.drain_events(timeout=1)
             except socket.timeout:
-                self.logger.debug("do_run: %s" % repr(self.do_run))
+                LOG.debug("do_run: %s" % self.do_run)
             except Exception as e:
-                self.logger.debug("interrupt exception: %s" % e)
+                LOG.debug("Interrupt exception: %s" % e)
                 if self.threaded:
                     self.pub_thread.stop()
                 self.consumer.cancel()
@@ -224,21 +223,21 @@ class Server(object):
 
         if self.threaded:
             self.pub_thread.stop()
-        self.logger.debug("Normal Exit")
+        LOG.debug("Normal exit")
         self.consumer.cancel()
         self.connection.close()
         self.publish_connection.close()
-        self.logger.debug("All closed")
+        LOG.debug("Everything closed")
         self.is_stopped = True
 
     def stop(self):
         """
         Stops the server.
         """
-        self.logger.debug('Stop server')
+        LOG.debug("Stop server")
         self.do_run = False
         while not self.is_stopped:
-            self.logger.debug('wait for stop')
+            LOG.debug("Wait server stop...")
             sleep(0.1)
 
 
@@ -255,7 +254,6 @@ class Publisher(Thread):
 
     def __init__(self, result_queue, channel):
         Thread.__init__(self)
-        self.logger = logging.getLogger('callme.server')
         self.result_queue = result_queue
         self.channel = channel
         self.stopp_it = False
@@ -264,7 +262,7 @@ class Publisher(Thread):
         while not self.stopp_it:
             try:
                 result_set = self.result_queue.get(block=True, timeout=1)
-                self.logger.debug('Publish response: %s' % repr(result_set))
+                LOG.debug("Publish response: %r" % result_set)
 
                 src_exchange = Exchange(result_set.reply_to, "direct",
                                         durable=False, auto_delete=True)
