@@ -2,6 +2,7 @@ import unittest
 
 import test_actions
 
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(test_actions.suite())
