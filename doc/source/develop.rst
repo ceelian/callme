@@ -2,7 +2,7 @@
 Development of callme
 ================================================================
 
-Developement of Callme happens on Github https://github.com/ceelian/callme.
+Development of Callme happens on Github https://github.com/ceelian/callme.
 Feel free to contribute.
 
 Preparing packaging and distribution

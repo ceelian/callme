@@ -34,7 +34,7 @@ A simple RPC Server which provides an add method::
 						
 	server.register_function(add, 'add')
 	server.start()
-	
+
 and a client which uses **fooserver** to add **1 + 1** and finally prints the
 result::
 
@@ -69,7 +69,7 @@ Permissions
 It is possible to control the access to a RPC Server by the Broker. We use
 RabbitMQ as example because this is the broker we used for testing and
 development. To get the highest security out of the permission system it is
-recommended using seperate vhost only for callme communication (if you
+recommended using separate vhost only for callme communication (if you
 have other amqp messages on your system on the same broker).  
 
 For a more in depth explanation why these permissions look how they are see 
@@ -110,7 +110,7 @@ Architecture
 Callme uses kombu for communication between Proxy and Server. Callme transfers
 instances of the `RpcResponse` and `RpcRequest` to execute remote
 procedure calls (RPC). The instances of these classes are pickled by kombu and
-then transfered to the server or proxy.
+then transferred to the server or proxy.
 
 
 
@@ -158,9 +158,9 @@ The Exchange and Queue Design::
 
 Logging
 -------
-At the moment there are to loggers present with the names *callme.proxy
+At the moment there are too loggers present with the names *callme.proxy
 and *callme.server*. Both are mostly used for debugging at the moment.
-	
+
 Bug Tracker
 -----------
 
@@ -193,8 +193,8 @@ Using ``easy_install`` to install ``callme``::
 If you have downloaded a source tarball you can install it
 by doing the following::
 
-    $ python setup.py build
-    $ python setup.py install
+	$ python setup.py build
+	$ python setup.py install
 
 
 Supported by
@@ -214,4 +214,3 @@ callme is released under the BSD License.
 The full license text is in the root folder of the callme Package.
 
 
-   
