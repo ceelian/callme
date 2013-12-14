@@ -2,8 +2,8 @@
 
 from callme import info
 
-from server import Server
-from proxy import Proxy
+from server import Server   # noqa
+from proxy import Proxy     # noqa
 
 VERSION = info.VERSION
 __version__ = info.__version__
@@ -11,4 +11,3 @@ __author__ = info.__author__
 __contact__ = info.__contact__
 __homepage__ = info.__homepage__
 __docformat__ = info.__docformat__
-

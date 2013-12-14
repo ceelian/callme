@@ -82,7 +82,8 @@ class Server(object):
         self.publish_channel = self.publish_connection.channel()
 
         # consume
-        self.consumer = Consumer(self.channel, self.target_queue, accept=['pickle'])
+        self.consumer = Consumer(self.channel, self.target_queue,
+                                 accept=['pickle'])
         if self.threaded:
             self.consumer.register_callback(self._on_request_threaded)
         else:
@@ -97,7 +98,7 @@ class Server(object):
         processes the incoming rpc calls in a serial manner (no multi-
         threading)
 
-        :param body: the body of the amqp message already unpickled by kombu
+        :param body: the body of the amqp message already deserialized by kombu
         :param message: the plain amqp kombu.message with additional
         information
         """
@@ -145,7 +146,7 @@ class Server(object):
         a parallel manner (one thread for each request). A separate Publisher
         thread is used to send back the results.
 
-        :param body: the body of the amqp message already unpickled by kombu
+        :param body: the body of the amqp message already deserialized by kombu
         :param message: the plain amqp kombu.message with additional
         information
         """

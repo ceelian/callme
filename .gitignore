@@ -4,4 +4,6 @@
 *.egg-info
 dummy.py
 *.log
+.coverage
 /.idea
+/.tox

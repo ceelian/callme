@@ -55,19 +55,18 @@ class Proxy(object):
         self.channel = self.connection.channel()
         self.timeout = timeout
         my_uuid = gen_unique_id()
-        self.reply_id = "client_"+amqp_user+"_ex_" + my_uuid
+        self.reply_id = "client_"+amqp_user+"_ex_"+my_uuid
         LOG.debug("Queue ID: {0}".format(self.reply_id))
         src_exchange = Exchange(self.reply_id, "direct", durable=False,
                                 auto_delete=True)
         src_queue = Queue("client_"+amqp_user+"_queue_"+my_uuid, durable=False,
                           exchange=src_exchange, auto_delete=True)
 
-        # must declare in advance so reply message isn't
-           # published before.
+        # must declare in advance so reply message isn't published before
         src_queue(self.channel).declare()
 
         consumer = Consumer(channel=self.channel, queues=src_queue,
-                            callbacks=[self._on_response],accept=['pickle'])
+                            callbacks=[self._on_response], accept=['pickle'])
         consumer.consume()
 
     def _on_response(self, body, message):
@@ -76,8 +75,9 @@ class Proxy(object):
         decides if it is the message we are waiting for - the message with the
         result
 
-        :param body: the body of the amqp message already unpickled by kombu
-        :param message: the plain amqp kombu.message with additional information
+        :param body: The body of the amqp message already deserialized by kombu
+        :param message: The plain amqp kombu.message with additional
+                        information
         """
 
         if self.corr_id == message.properties['correlation_id'] and \
@@ -97,7 +97,6 @@ class Proxy(object):
         :keyword server_id: The server id where the call will be made.
         :keyword timeout: set or overrides the call timeout in seconds
         :rtype: Return `self` to cascade further calls
-
         """
 
         if server_id is not None:

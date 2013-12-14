@@ -9,6 +9,7 @@ init_pyc = 'src/callme/__init__.pyc'
 if os.path.exists(init_pyc):
     os.remove(init_pyc)
 
+import callme
 from callme import info
 
 
@@ -26,21 +27,21 @@ setuptools_options = {
 
 
 setup(
-    name = "callme",
-    version = info.__version__,
-    packages = find_packages('src'),
-    package_dir = {'':'src'},
-    install_requires = ['kombu>=1.2.1,<3.0.0'],
-  
+    name="callme",
+    version=info.__version__,
+    packages=find_packages('src'),
+    package_dir={'': 'src'},
+    install_requires=['kombu>=1.2.1,<3.0.0'],
+
     # metadata for upload to PyPI
-    author = info.__author__,
-    author_email = info.__contact__,
-    description = info.__doc__,
+    author=info.__author__,
+    author_email=info.__contact__,
+    description=info.__doc__,
     long_description=long_description,
     keywords="amqp rpc",
     platforms=["any"],
-    url = info.__homepage__,
-    license = 'BSD',
+    url=info.__homepage__,
+    license='BSD',
     classifiers=[
         "Development Status :: 4 - Beta",
         "Operating System :: OS Independent",
