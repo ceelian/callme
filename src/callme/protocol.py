@@ -30,7 +30,3 @@ class RpcResponse(object):
     def __init__(self, result, exception_raised=False):
         self.result = result
         self.exception_raised = exception_raised
-
-
-class ConnectionError(Exception):
-    pass
