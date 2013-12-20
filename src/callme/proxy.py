@@ -56,7 +56,7 @@ class Proxy(object):
         self.timeout = timeout
         my_uuid = gen_unique_id()
         self.reply_id = "client_"+amqp_user+"_ex_" + my_uuid
-        LOG.debug("Queue ID: %s" % self.reply_id)
+        LOG.debug("Queue ID: {0}".format(self.reply_id))
         src_exchange = Exchange(self.reply_id, "direct", durable=False,
                                 auto_delete=True)
         src_queue = Queue("client_"+amqp_user+"_queue_"+my_uuid, durable=False,
@@ -67,7 +67,7 @@ class Proxy(object):
         src_queue(self.channel).declare()
 
         consumer = Consumer(channel=self.channel, queues=src_queue,
-                            callbacks=[self._on_response])
+                            callbacks=[self._on_response],accept=['pickle'])
         consumer.consume()
 
     def _on_response(self, body, message):
@@ -116,7 +116,7 @@ class Proxy(object):
         :type params: list of parameters
         :rtype: result of the method
         """
-        LOG.debug("Request: %r; Params: %r" % (methodname, params))
+        LOG.debug("Request: {!r}; Params: {!r}".format(methodname, params))
 
         target_exchange = Exchange("server_"+self.server_id+"_ex", 'direct',
                                    durable=False, auto_delete=True)
@@ -127,7 +127,7 @@ class Proxy(object):
         rpc_req = RpcRequest(methodname, params)
         self.corr_id = str(uuid.uuid4())
         LOG.debug("RpcRequest build")
-        LOG.debug("Correlation id: %s" % self.corr_id)
+        LOG.debug("Correlation id: {0}".format(self.corr_id))
         self.producer.publish(rpc_req, serializer='pickle',
                               reply_to=self.reply_id,
                               correlation_id=self.corr_id)
@@ -135,7 +135,7 @@ class Proxy(object):
 
         self._wait_for_result()
 
-        LOG.debug("Result: %r" % self.response.result)
+        LOG.debug("Result: {!r}".format(self.response.result))
         res = self.response.result
         self.response.result = None
         self.is_received = False
@@ -154,7 +154,7 @@ class Proxy(object):
         seconds_elapsed = 0
         while not self.is_received:
             try:
-                LOG.debug("Draining events... timeout=%d, counter=%d" %
+                LOG.debug("Draining events... timeout={0}, counter={1}".format
                           (self.timeout, seconds_elapsed))
                 self.connection.drain_events(timeout=1)
             except socket.timeout:
@@ -170,7 +170,7 @@ class Proxy(object):
         be called on the Server.
         """
         # magic method dispatcher
-        LOG.debug("Recursion: " + name)
+        LOG.debug("Recursion: {0}".format(name))
         return _Method(self.__request, name)
 
 #===========================================================================

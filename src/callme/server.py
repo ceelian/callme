@@ -44,7 +44,7 @@ class Server(object):
                  amqp_port=5672,
                  ssl=False,
                  threaded=False):
-        LOG.debug("Server ID: %s" % server_id)
+        LOG.debug("Server ID: {0}".format(server_id))
         self.server_id = server_id
         self.threaded = threaded
         self.do_run = True
@@ -82,7 +82,7 @@ class Server(object):
         self.publish_channel = self.publish_connection.channel()
 
         # consume
-        self.consumer = Consumer(self.channel, self.target_queue)
+        self.consumer = Consumer(self.channel, self.target_queue, accept=['pickle'])
         if self.threaded:
             self.consumer.register_callback(self._on_request_threaded)
         else:
@@ -108,19 +108,19 @@ class Server(object):
             LOG.debug("Request is not an RpcRequest instance")
             return
 
-        LOG.debug("Call func on server %s" % self.server_id)
+        LOG.debug("Call func on server {0}".format(self.server_id))
         try:
-            LOG.debug("Correlation id: %s" %
-                      message.properties['correlation_id'])
-            LOG.debug("Call func with args %r" % rpc_req.func_args)
+            LOG.debug("Correlation id: {0}".format(
+                      message.properties['correlation_id']))
+            LOG.debug("Call func with args {!r}".format(rpc_req.func_args))
 
             result = self.func_dict[rpc_req.func_name](*rpc_req.func_args)
 
-            LOG.debug("Result: %r" % result)
+            LOG.debug("Result: {!r}".format(result))
             LOG.debug("Build response")
             rpc_resp = RpcResponse(result)
         except Exception as e:
-            LOG.debug("Exception happened: %s" % e)
+            LOG.debug("Exception happened: {0}".format(e))
             rpc_resp = RpcResponse(e, exception_raised=True)
 
         message.ack()
@@ -160,19 +160,19 @@ class Server(object):
         LOG.debug("Acknowledge")
 
         def exec_func(body, message, result_queue):
-            LOG.debug("Call func on server %s" % self.server_id)
+            LOG.debug("Call func on server{0}".format(self.server_id))
             try:
-                LOG.debug("Correlation id: %s" %
-                          message.properties['correlation_id'])
-                LOG.debug("Call func with args %r" % rpc_req.func_args)
+                LOG.debug("Correlation id: {0}".format(
+                          message.properties['correlation_id']))
+                LOG.debug("Call func with args {!r}".format(rpc_req.func_args))
 
                 result = self.func_dict[rpc_req.func_name](*rpc_req.func_args)
 
-                LOG.debug("Result: %r" % result)
+                LOG.debug("Result: {!r}".format(result))
                 LOG.debug("Build response")
                 rpc_resp = RpcResponse(result)
             except Exception as e:
-                LOG.debug("Exception happened: %s" % e)
+                LOG.debug("Exception happened: {0}".format(e))
                 rpc_resp = RpcResponse(e, exception_raised=True)
 
             result_queue.put(ResultSet(rpc_resp,
@@ -207,12 +207,12 @@ class Server(object):
 
         while self.do_run:
             try:
-                LOG.debug("Draining events: %s" % self.do_run)
+                LOG.debug("Draining events: {0}".format(self.do_run))
                 self.connection.drain_events(timeout=1)
             except socket.timeout:
-                LOG.debug("do_run: %s" % self.do_run)
+                LOG.debug("do_run: {0}".format(self.do_run))
             except Exception as e:
-                LOG.debug("Interrupt exception: %s" % e)
+                LOG.debug("Interrupt exception:{0}".format(e))
                 if self.threaded:
                     self.pub_thread.stop()
                 self.consumer.cancel()
@@ -262,7 +262,7 @@ class Publisher(Thread):
         while not self.stopp_it:
             try:
                 result_set = self.result_queue.get(block=True, timeout=1)
-                LOG.debug("Publish response: %r" % result_set)
+                LOG.debug("Publish response: {!r}".format(result_set))
 
                 src_exchange = Exchange(result_set.reply_to, "direct",
                                         durable=False, auto_delete=True)
