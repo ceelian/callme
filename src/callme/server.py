@@ -9,10 +9,10 @@ from kombu import BrokerConnection, Exchange, Queue, Consumer, Producer
 import logging
 import Queue as queue
 
+from exceptions import ConnectionError
 from protocol import RpcRequest
 from protocol import RpcResponse
 from threading import Thread
-from protocol import ConnectionError
 import socket
 from time import sleep
 
