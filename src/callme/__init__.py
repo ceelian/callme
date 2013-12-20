@@ -1,11 +1,11 @@
 """Callme - A python RPC module based on AMQP"""
-VERSION = (0, 1, 0)
-__version__ = ".".join(map(str, VERSION))
-__author__ = "Christian Haintz"
-__contact__ = "christian.haintz@orangelabs.at"
-__homepage__ = "http://packages.python.org/callme"
-__docformat__ = "restructuredtext"
 
+from callme import info
 
-from server import Server
-from proxy import Proxy
+VERSION = info.VERSION
+__version__ = info.__version__
+__author__ = info.__author__
+__contact__ = info.__contact__
+__homepage__ = info.__homepage__
+__docformat__ = info.__docformat__
+
