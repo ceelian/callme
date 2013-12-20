@@ -10,40 +10,40 @@ successor of ``QAM`` <http://packages.python.org/qam>).
 
 **Key Features:**
 
-	- easy to use
-	- uses AMQP as transport protocol
-	- support timeouts
-	- SSL support
-	- supports remote exceptions
-	- OpenSource BSD-licensed
-	- designed to support broker-side permission system
+    - easy to use
+    - uses AMQP as transport protocol
+    - support timeouts
+    - SSL support
+    - supports remote exceptions
+    - OpenSource BSD-licensed
+    - designed to support broker-side permission system
 
-	
+
 Getting started with callme
 ---------------------------
 
 A simple RPC Server which provides an add method::
 
-	import callme
+    import callme
 
-	def add(a, b):
-		return a + b
-		
-	server = callme.Server(server_id='fooserver',
-						amqp_host ='localhost')
-						
-	server.register_function(add, 'add')
-	server.start()
+    def add(a, b):
+        return a + b
+
+    server = callme.Server(server_id='fooserver',
+                           amqp_host='localhost')
+
+    server.register_function(add, 'add')
+    server.start()
 
 and a client which uses **fooserver** to add **1 + 1** and finally prints the
 result::
 
-	import callme
-	
-	proxy = callme.Proxy(amqp_host ='localhost')
-		
-	print proxy.use_server('fooserver').add(1,1)
-	
+    import callme
+
+    proxy = callme.Proxy(amqp_host='localhost')
+
+    print proxy.use_server('fooserver').add(1, 1)
+
 There are optional parameters to fit different needs which are explained in depth
 in the Server and Proxy Documentation.
 
@@ -158,7 +158,7 @@ The Exchange and Queue Design::
 
 Logging
 -------
-At the moment there are too loggers present with the names *callme.proxy
+At the moment there are two loggers present with the names *callme.proxy*
 and *callme.server*. Both are mostly used for debugging at the moment.
 
 Bug Tracker
@@ -210,7 +210,7 @@ Development of callme happens at  https://github.com/ceelian/callme
 License
 -------
 
-callme is released under the BSD License. 
+Callme is released under the BSD License.
 The full license text is in the root folder of the callme Package.
 
 
