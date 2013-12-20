@@ -207,6 +207,15 @@ Contributing
 We are welcome everyone who wants to contribute to callme. 
 Development of callme happens at  https://github.com/ceelian/callme
 
+
+Contributers (chronological order)
+----------------------------------
+	- mkisto (https://github.com/mkisto)
+    - carletes (https://github.com/carletes)
+    - skudriashev (https://github.com/skudriashev)
+
+
+
 License
 -------
 
