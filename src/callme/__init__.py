@@ -2,6 +2,9 @@
 
 from callme import info
 
+from server import Server
+from proxy import Proxy
+
 VERSION = info.VERSION
 __version__ = info.__version__
 __author__ = info.__author__
