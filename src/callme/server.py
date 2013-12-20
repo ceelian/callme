@@ -121,7 +121,7 @@ class Server(object):
             rpc_resp = RpcResponse(result)
         except Exception as e:
             LOG.debug("Exception happened: {0}".format(e))
-            rpc_resp = RpcResponse(e, exception_raised=True)
+            rpc_resp = RpcResponse(e)
 
         message.ack()
 
@@ -173,7 +173,7 @@ class Server(object):
                 rpc_resp = RpcResponse(result)
             except Exception as e:
                 LOG.debug("Exception happened: {0}".format(e))
-                rpc_resp = RpcResponse(e, exception_raised=True)
+                rpc_resp = RpcResponse(e)
 
             result_queue.put(ResultSet(rpc_resp,
                                        message.properties['correlation_id'],

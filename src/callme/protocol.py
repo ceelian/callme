@@ -24,12 +24,13 @@ class RpcResponse(object):
     back to the client
 
     :keyword result: the result of the rpc call on the server
-    :keyword exception_raised: if the result is an exception which was
-    raised during the execution of the rpc call on the server
     """
-    def __init__(self, result, exception_raised=False):
+    def __init__(self, result):
         self.result = result
-        self.exception_raised = exception_raised
+
+    @property
+    def is_exception(self):
+        return isinstance(self.result, BaseException)
 
 
 class ConnectionError(Exception):
