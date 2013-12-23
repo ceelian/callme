@@ -7,8 +7,7 @@ Classes
 
 
 class RpcRequest(object):
-    """
-    This class is used to transport the RPC Request to the server.
+    """This class is used to transport the RPC Request to the server.
 
     :keyword func_name: the rpc function name (= method name)
     :keyword func_args: the arguments for the function
@@ -19,9 +18,8 @@ class RpcRequest(object):
 
 
 class RpcResponse(object):
-    """
-    This class is used to transport the RPC Response from the server
-    back to the client
+    """This class is used to transport the RPC Response from the server
+    back to the client.
 
     :keyword result: the result of the rpc call on the server
     """

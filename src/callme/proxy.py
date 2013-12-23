@@ -18,18 +18,18 @@ LOG = logging.getLogger(__name__)
 
 
 class Proxy(object):
-    """
-    This Proxy class is used to handle the communication with the rpc server
+    """This Proxy class is used to handle the communication with the rpc
+    server.
 
-    :keyword server_id: Default id of the Server (can be declared later
-    see :func:`use_server`)
-    :keyword amqp_host: The host of where the AMQP Broker is running.
-    :keyword amqp_user: The username for the AMQP Broker.
-    :keyword amqp_password: The password for the AMQP Broker.
-    :keyword amqp_vhost: The virtual host of the AMQP Broker.
-    :keyword amqp_port: The port of the AMQP Broker.
-    :keyword ssl: Use SSL connection for the AMQP Broker.
-    :keyword timeout: Default timeout for calls in seconds
+    :keyword server_id: default id of the Server (can be declared later
+        see :func:`use_server`)
+    :keyword amqp_host: the host of where the AMQP Broker is running
+    :keyword amqp_user: the username for the AMQP Broker
+    :keyword amqp_password: the password for the AMQP Broker
+    :keyword amqp_vhost: the virtual host of the AMQP Broker
+    :keyword amqp_port: the port of the AMQP Broker
+    :keyword ssl: use SSL connection for the AMQP Broker
+    :keyword timeout: default timeout for calls in seconds
     """
     timeout = 0
     response = None
@@ -62,8 +62,7 @@ class Proxy(object):
         src_queue = Queue("client_"+amqp_user+"_queue_"+my_uuid, durable=False,
                           exchange=src_exchange, auto_delete=True)
 
-        # must declare in advance so reply message isn't
-           # published before.
+        # must declare in advance so reply message isn't published before
         src_queue(self.channel).declare()
 
         consumer = Consumer(channel=self.channel, queues=src_queue,
@@ -71,13 +70,13 @@ class Proxy(object):
         consumer.consume()
 
     def _on_response(self, body, message):
-        """
-        This method is automatically called when a response is incoming and
+        """This method is automatically called when a response is incoming and
         decides if it is the message we are waiting for - the message with the
-        result
+        result.
 
-        :param body: the body of the amqp message already unpickled by kombu
-        :param message: the plain amqp kombu.message with additional information
+        :param body: the body of the amqp message already deserialized by kombu
+        :param message: the plain amqp kombu.message with additional
+            information
         """
 
         if self.corr_id == message.properties['correlation_id'] and \
@@ -88,16 +87,15 @@ class Proxy(object):
 
     def use_server(self, server_id=None, timeout=None):
         """Use the specified server and set an optional timeout for the method
-        call
+        call.
 
         Typical use:
 
             >> my_proxy.use_server('fooserver').a_remote_func()
 
-        :keyword server_id: The server id where the call will be made.
+        :keyword server_id: the server id where the call will be made
         :keyword timeout: set or overrides the call timeout in seconds
-        :rtype: Return `self` to cascade further calls
-
+        :rtype: return `self` to cascade further calls
         """
 
         if server_id is not None:
@@ -107,8 +105,7 @@ class Proxy(object):
         return self
 
     def __request(self, methodname, params):
-        """
-        The remote-method-call execution function
+        """The remote-method-call execution function.
 
         :param methodname: name of the method that should be executed
         :param params: parameter for the remote-method
@@ -144,10 +141,9 @@ class Proxy(object):
         return res
 
     def _wait_for_result(self):
-        """
-        Waits for the result from the server, checks every second if a timeout
-        occurred. If a timeout occurs a `socket.timeout` exception will be
-        raised.
+        """Waits for the result from the server, checks every second if
+        a timeout occurred. If a timeout occurs a `socket.timeout` exception
+        will be raised.
         """
         seconds_elapsed = 0
         while not self.is_received:
@@ -162,8 +158,7 @@ class Proxy(object):
                         raise socket.timeout()
 
     def __getattr__(self, name):
-        """
-        This method is invoked, if a method is being called, which doesn't
+        """This method is invoked, if a method is being called, which doesn't
         exist on Proxy. It is used for RPC, to get the function which should
         be called on the Server.
         """
@@ -175,8 +170,8 @@ class Proxy(object):
 
 
 class _Method:
-    """
-    The _Method-class is used to realize remote-method-calls.
+    """This class is used to realize remote-method-calls.
+
     :param send: name of the function that should be executed on Proxy
     :param name: name of the method which should be called on the Server
     """
