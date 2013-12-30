@@ -57,7 +57,7 @@ class Proxy(object):
         my_uuid = gen_unique_id()
         self.reply_id = "client_"+amqp_user+"_ex_" + my_uuid
         LOG.debug("Queue ID: {0}".format(self.reply_id))
-        src_exchange = Exchange(self.reply_id, "direct", durable=False,
+        src_exchange = Exchange(self.reply_id, durable=False,
                                 auto_delete=True)
         src_queue = Queue("client_"+amqp_user+"_queue_"+my_uuid, durable=False,
                           exchange=src_exchange, auto_delete=True)
@@ -118,7 +118,7 @@ class Proxy(object):
         """
         LOG.debug("Request: {!r}; Params: {!r}".format(methodname, params))
 
-        target_exchange = Exchange("server_"+self.server_id+"_ex", 'direct',
+        target_exchange = Exchange("server_"+self.server_id+"_ex",
                                    durable=False, auto_delete=True)
         self.producer = Producer(channel=self.channel,
                                  exchange=target_exchange,

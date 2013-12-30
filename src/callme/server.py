@@ -51,7 +51,7 @@ class Server(object):
         self.is_stopped = True
         self.func_dict = {}
         self.result_queue = queue.Queue()
-        target_exchange = Exchange("server_"+server_id+"_ex", "direct",
+        target_exchange = Exchange("server_"+server_id+"_ex",
                                    durable=False, auto_delete=True)
         self.target_queue = Queue("server_"+server_id+"_queue",
                                   exchange=target_exchange, auto_delete=True,
@@ -127,7 +127,7 @@ class Server(object):
 
         LOG.debug("Publish response")
         # producer
-        src_exchange = Exchange(message.properties['reply_to'], 'direct',
+        src_exchange = Exchange(message.properties['reply_to'],
                                 durable=False, auto_delete=True)
         self.producer = Producer(self.publish_channel, src_exchange,
                                  auto_declare=False)
@@ -264,7 +264,7 @@ class Publisher(Thread):
                 result_set = self.result_queue.get(block=True, timeout=1)
                 LOG.debug("Publish response: {!r}".format(result_set))
 
-                src_exchange = Exchange(result_set.reply_to, "direct",
+                src_exchange = Exchange(result_set.reply_to,
                                         durable=False, auto_delete=True)
                 producer = Producer(self.channel, src_exchange,
                                     auto_declare=False)
