@@ -6,6 +6,8 @@ import logging
 import socket
 import sys
 import unittest
+
+from callme import exceptions
 from threading import Thread
 
 
@@ -187,7 +189,7 @@ class ActionsTestCase(unittest.TestCase):
                              amqp_user='guest',
                              amqp_password='guest')
 
-        self.assertRaises(socket.timeout,
+        self.assertRaises(exceptions.RpcTimeout,
                           proxy.use_server('fooserver', timeout=1).madd, 1, 2)
 
     def test_remote_exception(self):
