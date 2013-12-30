@@ -31,7 +31,3 @@ class RpcResponse(object):
     @property
     def is_exception(self):
         return isinstance(self.result, BaseException)
-
-
-class ConnectionError(Exception):
-    pass
