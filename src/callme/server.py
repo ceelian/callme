@@ -249,10 +249,10 @@ class Publisher(Thread):
         Thread.__init__(self)
         self.result_queue = result_queue
         self.channel = channel
-        self.stopp_it = False
+        self.stop_it = False
 
     def run(self):
-        while not self.stopp_it:
+        while not self.stop_it:
             try:
                 result_set = self.result_queue.get(block=True, timeout=1)
                 LOG.debug("Publish response: {!r}".format(result_set))
@@ -269,8 +269,10 @@ class Publisher(Thread):
                 pass
 
     def stop(self):
-        """Stops the Publisher thread."""
-        self.stopp_it = True
+        """
+        Stops the Publisher thread
+        """
+        self.stop_it = True
         self.join()
 
 
