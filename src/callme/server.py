@@ -20,19 +20,18 @@ LOG = logging.getLogger(__name__)
 
 
 class Server(object):
-    """
-    This Server class is used to provide an RPC server
+    """This Server class is used to provide an RPC server.
 
-    :keyword server_id: Id of the server
-    :keyword amqp_host: The host of where the AMQP Broker is running.
-    :keyword amqp_user: The username for the AMQP Broker.
-    :keyword amqp_password: The password for the AMQP Broker.
-    :keyword amqp_vhost: The virtual host of the AMQP Broker.
-    :keyword amqp_port: The port of the AMQP Broker.
-    :keyword ssl: Use SSL connection for the AMQP Broker.
-    :keyword threaded: Use of multithreading. If set to true RPC call-execution
-    will processed parallel (one thread per call) which dramatically improves
-    performance.
+    :keyword server_id: id of the server
+    :keyword amqp_host: the host of where the AMQP Broker is running
+    :keyword amqp_user: the username for the AMQP Broker
+    :keyword amqp_password: the password for the AMQP Broker
+    :keyword amqp_vhost: the virtual host of the AMQP Broker
+    :keyword amqp_port: the port of the AMQP Broker
+    :keyword ssl: use SSL connection for the AMQP Broker
+    :keyword threaded: use of multithreading, if set to true RPC call-execution
+        will processed parallel (one thread per call) which dramatically
+        improves performance
     """
 
     def __init__(self,
@@ -93,14 +92,13 @@ class Server(object):
         LOG.debug("Initialization done")
 
     def _on_request(self, body, message):
-        """
-        This method is automatically called when a request is incoming. It
+        """This method is automatically called when a request is incoming. It
         processes the incoming rpc calls in a serial manner (no multi-
-        threading)
+        threading).
 
         :param body: the body of the amqp message already deserialized by kombu
         :param message: the plain amqp kombu.message with additional
-        information
+            information
         """
         LOG.debug("Got request")
         rpc_req = body
@@ -140,15 +138,14 @@ class Server(object):
         LOG.debug("Acknowledge")
 
     def _on_request_threaded(self, body, message):
-        """
-        This method is automatically called when a request is incoming and
+        """This method is automatically called when a request is incoming and
         `threaded` set to `True`. It processes the incoming rpc calls in
         a parallel manner (one thread for each request). A separate Publisher
         thread is used to send back the results.
 
         :param body: the body of the amqp message already deserialized by kombu
         :param message: the plain amqp kombu.message with additional
-        information
+            information
         """
         LOG.debug("Got request")
         rpc_req = body
@@ -186,18 +183,16 @@ class Server(object):
         p.start()
 
     def register_function(self, func, name):
-        """
-        Registers a function as rpc function so that is accessible from the
+        """Registers a function as rpc function so that is accessible from the
         proxy.
 
-        :param func: The function we want to provide as rpc method
-        :param name: The name with which the function is visible to the clients
+        :param func: the function we want to provide as rpc method
+        :param name: the name with which the function is visible to the clients
         """
         self.func_dict[name] = func
 
     def start(self):
-        """
-        Starts the server. If `threaded` is `True` also starts the Publisher
+        """Starts the server. If `threaded` is `True` also starts the Publisher
         thread.
         """
         self.is_stopped = False
@@ -232,9 +227,7 @@ class Server(object):
         self.is_stopped = True
 
     def stop(self):
-        """
-        Stops the server.
-        """
+        """Stops the server."""
         LOG.debug("Stop server")
         self.do_run = False
         while not self.is_stopped:
@@ -243,9 +236,8 @@ class Server(object):
 
 
 class Publisher(Thread):
-    """
-    This class is a thread class and used internally for sending back
-    results to the client
+    """This class is a thread class and used internally for sending back
+    results to the client.
 
     :param result_queue: a Queue.Queue type queue which is thread-safe and
         holds the results which should be sent back. Item in the queue must
@@ -277,20 +269,17 @@ class Publisher(Thread):
                 pass
 
     def stop(self):
-        """
-        Stops the Publisher thread
-        """
+        """Stops the Publisher thread."""
         self.stopp_it = True
         self.join()
 
 
 class ResultSet(object):
-    """
-    This class is used as type for the items in the result_queue when used in
-    threaded mode. It stores all information needed to send back the result to
-    the right client.
+    """This class is used as type for the items in the result_queue when used
+    in threaded mode. It stores all information needed to send back the result
+    to the right client.
 
-    :param rpc_resp: the RPC Response object of type :class:`RpcResponse`.
+    :param rpc_resp: the RPC Response object of type :class:`RpcResponse`
     :param correlation_id: the correlation_id of the amqp message
     :param reply_to: the reply_to field of the amqp message
     """
