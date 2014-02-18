@@ -6,9 +6,11 @@ Classes
 """
 
 from kombu import BrokerConnection, Exchange, Queue, Consumer, Producer
+import exceptions
 import uuid
 import logging
 import socket
+import time
 from kombu.utils import gen_unique_id
 
 from protocol import RpcRequest
@@ -145,17 +147,18 @@ class Proxy(object):
         a timeout occurred. If a timeout occurs a `socket.timeout` exception
         will be raised.
         """
-        seconds_elapsed = 0
+        elapsed = 0
+        start_time = time.time()
         while not self.is_received:
             try:
-                LOG.debug("Draining events... timeout={0}, counter={1}".format
-                          (self.timeout, seconds_elapsed))
+                LOG.debug("Draining events... timeout: {0}, elapsed: {1}"
+                          .format(self.timeout, elapsed))
                 self.connection.drain_events(timeout=1)
             except socket.timeout:
                 if self.timeout > 0:
-                    seconds_elapsed = seconds_elapsed + 1
-                    if seconds_elapsed > self.timeout:
-                        raise socket.timeout()
+                    elapsed = time.time() - start_time
+                    if elapsed > self.timeout:
+                       raise exceptions.RpcTimeout("RPC Request timeout")
 
     def __getattr__(self, name):
         """This method is invoked, if a method is being called, which doesn't
