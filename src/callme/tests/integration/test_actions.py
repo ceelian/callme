@@ -3,7 +3,6 @@
 
 import callme
 import logging
-import socket
 import sys
 import unittest
 

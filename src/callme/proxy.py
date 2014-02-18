@@ -158,7 +158,7 @@ class Proxy(object):
                 if self.timeout > 0:
                     elapsed = time.time() - start_time
                     if elapsed > self.timeout:
-                       raise exceptions.RpcTimeout("RPC Request timeout")
+                        raise exceptions.RpcTimeout("RPC Request timeout")
 
     def __getattr__(self, name):
         """This method is invoked, if a method is being called, which doesn't
