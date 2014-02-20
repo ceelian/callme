@@ -2,8 +2,8 @@
 
 from callme import info
 
-from proxy import Proxy     # noqa
-from server import Server   # noqa
+from callme.proxy import Proxy      # noqa
+from callme.server import Server    # noqa
 
 VERSION = info.VERSION
 __version__ = info.__version__

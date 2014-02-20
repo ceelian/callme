@@ -7,10 +7,16 @@ Classes
 
 import kombu
 import logging
-import Queue
 import socket
 import threading
 import time
+
+import six
+if six.PY2:
+    import Queue as queue
+else:
+    import queue
+
 
 from callme import exceptions as exc
 from callme import protocol as pr
@@ -48,7 +54,7 @@ class Server(object):
         self.do_run = True
         self.is_stopped = True
         self.func_dict = {}
-        self.result_queue = Queue.Queue()
+        self.result_queue = queue.Queue()
         target_exchange = kombu.Exchange("server_"+server_id+"_ex",
                                          durable=False, auto_delete=True)
         self.target_queue = kombu.Queue("server_"+server_id+"_queue",
@@ -266,7 +272,7 @@ class Publisher(threading.Thread):
                 producer.publish(result_set.rpc_resp, serializer="pickle",
                                  correlation_id=result_set.correlation_id)
 
-            except Queue.Empty:
+            except queue.Empty:
                 pass
 
     def stop(self):

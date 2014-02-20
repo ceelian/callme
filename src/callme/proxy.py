@@ -5,13 +5,13 @@ Classes
 =======
 """
 
-import exceptions
 import kombu
 import logging
 import socket
 import time
 import uuid
 
+from callme import exceptions as exc
 from callme import protocol
 from kombu import utils
 
@@ -159,7 +159,7 @@ class Proxy(object):
                 if self.timeout > 0:
                     elapsed = time.time() - start_time
                     if elapsed > self.timeout:
-                        raise exceptions.RpcTimeout("RPC Request timeout")
+                        raise exc.RpcTimeout("RPC Request timeout")
 
     def __getattr__(self, name):
         """This method is invoked, if a method is being called, which doesn't
