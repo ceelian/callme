@@ -2,8 +2,6 @@
 # -*- coding: UTF-8 -*-
 
 import callme
-import logging
-import sys
 import unittest
 
 from callme import exceptions
@@ -285,22 +283,3 @@ class ActionsTestCase(unittest.TestCase):
             server_b.stop()
         p_a.join()
         p_b.join()
-
-
-def suite():
-    suite = unittest.TestSuite()
-    if len(sys.argv) > 1 and sys.argv[1][:2] == 't:':
-        suite.addTest(ActionsTestCase(sys.argv[1][2:]))
-    else:
-        suite.addTest(unittest.makeSuite(ActionsTestCase, 'test'))
-    return suite
-
-
-if __name__ == '__main__':
-    logging.basicConfig(
-        format='%(asctime)s %(name)s %(levelname)s %(message)s',
-        filename='callme.log',
-        level=logging.DEBUG)
-
-    # NOTE: call tests with t:<testcase> to launch only <testcase> test
-    unittest.TextTestRunner(verbosity=3).run(suite())
