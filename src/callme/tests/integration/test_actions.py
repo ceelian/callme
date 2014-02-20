@@ -204,10 +204,10 @@ class ActionsTestCase(unittest.TestCase):
 
     def test_timeout_call(self):
 
-        server = callme.Server(server_id='fooserver',   # noqa
-                               amqp_host='localhost',
-                               amqp_user='guest',
-                               amqp_password='guest')
+        callme.Server(server_id='fooserver',
+                      amqp_host='localhost',
+                      amqp_user='guest',
+                      amqp_password='guest')
 
         proxy = callme.Proxy(amqp_host='localhost',
                              amqp_user='guest',

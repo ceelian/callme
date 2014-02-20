@@ -119,6 +119,7 @@ class Server(object):
         else:
             self.consumer.register_callback(self._on_request)
         self.consumer.consume()
+        self.pub_thread = None
 
         LOG.debug("Initialization done")
 
@@ -159,10 +160,10 @@ class Server(object):
         # producer
         src_exchange = kombu.Exchange(message.properties['reply_to'],
                                       durable=False, auto_delete=True)
-        self.producer = kombu.Producer(self.publish_channel, src_exchange,
-                                       auto_declare=False)
+        producer = kombu.Producer(self.publish_channel, src_exchange,
+                                  auto_declare=False)
 
-        self.producer.publish(
+        producer.publish(
             rpc_resp, serializer='pickle',
             correlation_id=message.properties['correlation_id'])
 
@@ -188,7 +189,7 @@ class Server(object):
         message.ack()
         LOG.debug("Acknowledge")
 
-        def exec_func(body, message, result_queue):
+        def exec_func(message, result_queue):
             LOG.debug("Call func on server{0}".format(self.server_id))
             try:
                 LOG.debug("Correlation id: {0}".format(
@@ -210,7 +211,7 @@ class Server(object):
 
         p = threading.Thread(target=exec_func,
                              name=message.properties['correlation_id'],
-                             args=(body, message, self.result_queue))
+                             args=(message, self.result_queue))
         p.start()
 
     def register_function(self, func, name):

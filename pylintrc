@@ -1,8 +1,7 @@
 [MESSAGES CONTROL]
 
 # Disable the message(s) with the given id(s).
-disable=C0111,I0011,R0201,R0922,W0142,W0511,W0613,W0622,W0703,
-        C0103,W0403,W0201,R0801,F0401,W0621,W0106,W0612,W0141
+disable=C0103,C0111,W0106,W0141,W0703,F0401,R0801
 
 [BASIC]
 
@@ -12,8 +11,8 @@ variable-rgx=[a-z_][a-z0-9_]{0,30}$
 # Argument names can be 2 to 31 characters long, with lowercase and underscores
 argument-rgx=[a-z_][a-z0-9_]{1,30}$
 
-# Method names should be at least 3 characters long
-# and be lowecased with underscores
+# Method names should be at least 3 characters long and be lowecased with
+# underscores
 method-rgx=[a-z_][a-z0-9_]{2,50}$
 
 # Don't require docstrings on tests.

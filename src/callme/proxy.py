@@ -69,6 +69,7 @@ class Proxy(object):
                  ssl=False,
                  timeout=0):
 
+        self.server_id = server_id
         self.timeout = 0
         self.is_received = False
         self.connection = kombu.BrokerConnection(hostname=amqp_host,
@@ -81,6 +82,7 @@ class Proxy(object):
         self.timeout = timeout
         my_uuid = utils.gen_unique_id()
         self.reply_id = "client_"+amqp_user+"_ex_"+my_uuid
+        self.corr_id = None
         LOG.debug("Queue ID: {0}".format(self.reply_id))
         src_exchange = kombu.Exchange(self.reply_id, durable=False,
                                       auto_delete=True)
@@ -144,17 +146,17 @@ class Proxy(object):
 
         target_exchange = kombu.Exchange("server_"+self.server_id+"_ex",
                                          durable=False, auto_delete=True)
-        self.producer = kombu.Producer(channel=self.channel,
-                                       exchange=target_exchange,
-                                       auto_declare=False)
+        producer = kombu.Producer(channel=self.channel,
+                                  exchange=target_exchange,
+                                  auto_declare=False)
 
         rpc_req = protocol.RpcRequest(methodname, params)
         self.corr_id = str(uuid.uuid4())
         LOG.debug("RpcRequest build")
         LOG.debug("Correlation id: {0}".format(self.corr_id))
-        self.producer.publish(rpc_req, serializer='pickle',
-                              reply_to=self.reply_id,
-                              correlation_id=self.corr_id)
+        producer.publish(rpc_req, serializer='pickle',
+                         reply_to=self.reply_id,
+                         correlation_id=self.corr_id)
         LOG.debug("Producer published")
 
         self._wait_for_result()
