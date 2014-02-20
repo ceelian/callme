@@ -5,16 +5,15 @@ Classes
 =======
 """
 
-from kombu import BrokerConnection, Exchange, Queue, Consumer, Producer
 import exceptions
-import uuid
+import kombu
 import logging
 import socket
 import time
-from kombu.utils import gen_unique_id
+import uuid
 
-from protocol import RpcRequest
-from protocol import RpcResponse
+from callme import protocol
+from kombu import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -48,27 +47,29 @@ class Proxy(object):
 
         self.timeout = 0
         self.is_received = False
-        self.connection = BrokerConnection(hostname=amqp_host,
-                                           userid=amqp_user,
-                                           password=amqp_password,
-                                           virtual_host=amqp_vhost,
-                                           port=amqp_port,
-                                           ssl=ssl)
+        self.connection = kombu.BrokerConnection(hostname=amqp_host,
+                                                 userid=amqp_user,
+                                                 password=amqp_password,
+                                                 virtual_host=amqp_vhost,
+                                                 port=amqp_port,
+                                                 ssl=ssl)
         self.channel = self.connection.channel()
         self.timeout = timeout
-        my_uuid = gen_unique_id()
+        my_uuid = utils.gen_unique_id()
         self.reply_id = "client_"+amqp_user+"_ex_"+my_uuid
         LOG.debug("Queue ID: {0}".format(self.reply_id))
-        src_exchange = Exchange(self.reply_id, durable=False,
+        src_exchange = kombu.Exchange(self.reply_id, durable=False,
+                                      auto_delete=True)
+        src_queue = kombu.Queue("client_"+amqp_user+"_queue_"+my_uuid,
+                                durable=False, exchange=src_exchange,
                                 auto_delete=True)
-        src_queue = Queue("client_"+amqp_user+"_queue_"+my_uuid, durable=False,
-                          exchange=src_exchange, auto_delete=True)
 
         # must declare in advance so reply message isn't published before
         src_queue(self.channel).declare()
 
-        consumer = Consumer(channel=self.channel, queues=src_queue,
-                            callbacks=[self._on_response], accept=['pickle'])
+        consumer = kombu.Consumer(channel=self.channel, queues=src_queue,
+                                  callbacks=[self._on_response],
+                                  accept=['pickle'])
         consumer.consume()
 
     def _on_response(self, body, message):
@@ -82,7 +83,7 @@ class Proxy(object):
         """
 
         if self.corr_id == message.properties['correlation_id'] and \
-                isinstance(body, RpcResponse):
+                isinstance(body, protocol.RpcResponse):
             self.response = body
             self.is_received = True
             message.ack()
@@ -117,13 +118,13 @@ class Proxy(object):
         """
         LOG.debug("Request: {!r}; Params: {!r}".format(methodname, params))
 
-        target_exchange = Exchange("server_"+self.server_id+"_ex",
-                                   durable=False, auto_delete=True)
-        self.producer = Producer(channel=self.channel,
-                                 exchange=target_exchange,
-                                 auto_declare=False)
+        target_exchange = kombu.Exchange("server_"+self.server_id+"_ex",
+                                         durable=False, auto_delete=True)
+        self.producer = kombu.Producer(channel=self.channel,
+                                       exchange=target_exchange,
+                                       auto_declare=False)
 
-        rpc_req = RpcRequest(methodname, params)
+        rpc_req = protocol.RpcRequest(methodname, params)
         self.corr_id = str(uuid.uuid4())
         LOG.debug("RpcRequest build")
         LOG.debug("Correlation id: {0}".format(self.corr_id))

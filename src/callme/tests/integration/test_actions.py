@@ -2,10 +2,11 @@
 # -*- coding: UTF-8 -*-
 
 import callme
+import threading
+import time
 import unittest
 
-from callme import exceptions
-from threading import Thread
+from callme import exceptions as exc
 
 
 class ActionsTestCase(unittest.TestCase):
@@ -20,7 +21,7 @@ class ActionsTestCase(unittest.TestCase):
                                amqp_user='guest',
                                amqp_password='guest')
         server.register_function(madd, 'madd')
-        p = Thread(target=server.start)
+        p = threading.Thread(target=server.start)
         p.start()
 
         try:
@@ -34,8 +35,8 @@ class ActionsTestCase(unittest.TestCase):
         p.join()
 
     def test_secured_method_call(self):
-        print "IMPORTANT: If this testcase fail you probably haven't setup " \
-            + "your localhost broker with the init_rabbitmq.sh script"
+        print("IMPORTANT: If this testcase fail you probably haven't setup "
+              "your localhost broker with the init_rabbitmq.sh script")
 
         def madd(a, b):
             return a + b
@@ -45,7 +46,7 @@ class ActionsTestCase(unittest.TestCase):
                                amqp_user='s1',
                                amqp_password='s1')
         server.register_function(madd, 'madd')
-        p = Thread(target=server.start)
+        p = threading.Thread(target=server.start)
         p.start()
 
         try:
@@ -60,10 +61,9 @@ class ActionsTestCase(unittest.TestCase):
         p.join()
 
     def test_threaded_method_call(self):
-        from time import sleep
 
         def madd(a):
-            sleep(1)
+            time.sleep(1)
             return a
 
         server = callme.Server(server_id='fooserver',
@@ -72,7 +72,7 @@ class ActionsTestCase(unittest.TestCase):
                                amqp_password='guest',
                                threaded=True)
         server.register_function(madd, 'madd')
-        p = Thread(target=server.start)
+        p = threading.Thread(target=server.start)
         p.start()
 
         def threaded_call(i, results):
@@ -88,7 +88,7 @@ class ActionsTestCase(unittest.TestCase):
         try:
             # start 10 threads who call "parallel"
             for i in range(10):
-                t = Thread(target=threaded_call, args=(i, results))
+                t = threading.Thread(target=threaded_call, args=(i, results))
                 t.start()
                 threads.append(t)
 
@@ -100,13 +100,12 @@ class ActionsTestCase(unittest.TestCase):
 
         # check results
         for i, res in results:
-            self.assertEquals(i, res)
+            self.assertEqual(i, res)
 
     def test_half_threaded_method_call(self):
-        from time import sleep
 
         def madd(a):
-            sleep(0.1)
+            time.sleep(0.1)
             return a
 
         server = callme.Server(server_id='fooserver',
@@ -115,7 +114,7 @@ class ActionsTestCase(unittest.TestCase):
                                amqp_password='guest',
                                threaded=False)
         server.register_function(madd, 'madd')
-        p = Thread(target=server.start)
+        p = threading.Thread(target=server.start)
         p.start()
 
         def threaded_call(i, results):
@@ -131,7 +130,7 @@ class ActionsTestCase(unittest.TestCase):
         try:
             #start 3 threads who call "parallel"
             for i in range(3):
-                t = Thread(target=threaded_call, args=(i, results))
+                t = threading.Thread(target=threaded_call, args=(i, results))
                 t.start()
                 threads.append(t)
 
@@ -143,7 +142,7 @@ class ActionsTestCase(unittest.TestCase):
 
         # check results
         for i, res in results:
-            self.assertEquals(i, res)
+            self.assertEqual(i, res)
 
     def test_double_method_call(self):
 
@@ -155,7 +154,7 @@ class ActionsTestCase(unittest.TestCase):
                                amqp_user='guest',
                                amqp_password='guest')
         server.register_function(madd, 'madd')
-        p = Thread(target=server.start)
+        p = threading.Thread(target=server.start)
         p.start()
 
         try:
@@ -186,7 +185,7 @@ class ActionsTestCase(unittest.TestCase):
                              amqp_user='guest',
                              amqp_password='guest')
 
-        self.assertRaises(exceptions.RpcTimeout,
+        self.assertRaises(exc.RpcTimeout,
                           proxy.use_server('fooserver', timeout=1).madd, 1, 2)
 
     def test_remote_exception(self):
@@ -199,7 +198,7 @@ class ActionsTestCase(unittest.TestCase):
                                amqp_user='guest',
                                amqp_password='guest')
         server.register_function(madd, 'madd')
-        p = Thread(target=server.start)
+        p = threading.Thread(target=server.start)
         p.start()
 
         try:
@@ -213,8 +212,8 @@ class ActionsTestCase(unittest.TestCase):
         p.join()
 
     def test_ssl_method_call(self):
-        print "IMPORTANT: If this testcase fail you probably haven't setup " \
-            + "your localhost broker with server-side SSL"
+        print("IMPORTANT: If this testcase fail you probably haven't setup "
+              "your localhost broker with server-side SSL")
 
         def madd(a, b):
             return a + b
@@ -226,7 +225,7 @@ class ActionsTestCase(unittest.TestCase):
                                ssl=True,
                                amqp_port=5671)
         server.register_function(madd, 'madd')
-        p = Thread(target=server.start)
+        p = threading.Thread(target=server.start)
         p.start()
 
         try:
@@ -256,7 +255,7 @@ class ActionsTestCase(unittest.TestCase):
                                  amqp_user='guest',
                                  amqp_password='guest')
         server_a.register_function(func_a, 'f')
-        p_a = Thread(target=server_a.start)
+        p_a = threading.Thread(target=server_a.start)
         p_a.start()
 
         #Start Server B
@@ -265,7 +264,7 @@ class ActionsTestCase(unittest.TestCase):
                                  amqp_user='guest',
                                  amqp_password='guest')
         server_b.register_function(func_b, 'f')
-        p_b = Thread(target=server_b.start)
+        p_b = threading.Thread(target=server_b.start)
         p_b.start()
 
         try:

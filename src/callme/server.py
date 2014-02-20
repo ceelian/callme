@@ -5,16 +5,15 @@ Classes
 =======
 """
 
-from kombu import BrokerConnection, Exchange, Queue, Consumer, Producer
+import kombu
 import logging
-import Queue as queue
-
-from exceptions import ConnectionError
-from protocol import RpcRequest
-from protocol import RpcResponse
-from threading import Thread
+import Queue
 import socket
-from time import sleep
+import threading
+import time
+
+from callme import exceptions as exc
+from callme import protocol as pr
 
 LOG = logging.getLogger(__name__)
 
@@ -49,40 +48,42 @@ class Server(object):
         self.do_run = True
         self.is_stopped = True
         self.func_dict = {}
-        self.result_queue = queue.Queue()
-        target_exchange = Exchange("server_"+server_id+"_ex",
-                                   durable=False, auto_delete=True)
-        self.target_queue = Queue("server_"+server_id+"_queue",
-                                  exchange=target_exchange, auto_delete=True,
-                                  durable=False)
+        self.result_queue = Queue.Queue()
+        target_exchange = kombu.Exchange("server_"+server_id+"_ex",
+                                         durable=False, auto_delete=True)
+        self.target_queue = kombu.Queue("server_"+server_id+"_queue",
+                                        exchange=target_exchange,
+                                        auto_delete=True,
+                                        durable=False)
 
-        self.connection = BrokerConnection(hostname=amqp_host,
-                                           userid=amqp_user,
-                                           password=amqp_password,
-                                           virtual_host=amqp_vhost,
-                                           port=amqp_port,
-                                           ssl=ssl)
+        self.connection = kombu.BrokerConnection(hostname=amqp_host,
+                                                 userid=amqp_user,
+                                                 password=amqp_password,
+                                                 virtual_host=amqp_vhost,
+                                                 port=amqp_port,
+                                                 ssl=ssl)
         try:
             self.connection.connect()
         except IOError:
             LOG.critical("Connection Error: Probably AMQP User has"
                          " not enough permissions")
-            raise ConnectionError("Connection Error: Probably AMQP User has"
-                                  " not enough permissions")
+            raise exc.ConnectionError("Connection Error: Probably AMQP User "
+                                      "has not enough permissions")
 
         self.channel = self.connection.channel()
 
-        self.publish_connection = BrokerConnection(hostname=amqp_host,
-                                                   userid=amqp_user,
-                                                   password=amqp_password,
-                                                   virtual_host=amqp_vhost,
-                                                   port=amqp_port,
-                                                   ssl=ssl)
+        self.publish_connection = kombu.BrokerConnection(
+            hostname=amqp_host,
+            userid=amqp_user,
+            password=amqp_password,
+            virtual_host=amqp_vhost,
+            port=amqp_port,
+            ssl=ssl)
         self.publish_channel = self.publish_connection.channel()
 
         # consume
-        self.consumer = Consumer(self.channel, self.target_queue,
-                                 accept=['pickle'])
+        self.consumer = kombu.Consumer(self.channel, self.target_queue,
+                                       accept=['pickle'])
         if self.threaded:
             self.consumer.register_callback(self._on_request_threaded)
         else:
@@ -103,7 +104,7 @@ class Server(object):
         LOG.debug("Got request")
         rpc_req = body
 
-        if not isinstance(rpc_req, RpcRequest):
+        if not isinstance(rpc_req, pr.RpcRequest):
             LOG.debug("Request is not an RpcRequest instance")
             return
 
@@ -117,19 +118,19 @@ class Server(object):
 
             LOG.debug("Result: {!r}".format(result))
             LOG.debug("Build response")
-            rpc_resp = RpcResponse(result)
+            rpc_resp = pr.RpcResponse(result)
         except Exception as e:
             LOG.debug("Exception happened: {0}".format(e))
-            rpc_resp = RpcResponse(e)
+            rpc_resp = pr.RpcResponse(e)
 
         message.ack()
 
         LOG.debug("Publish response")
         # producer
-        src_exchange = Exchange(message.properties['reply_to'],
-                                durable=False, auto_delete=True)
-        self.producer = Producer(self.publish_channel, src_exchange,
-                                 auto_declare=False)
+        src_exchange = kombu.Exchange(message.properties['reply_to'],
+                                      durable=False, auto_delete=True)
+        self.producer = kombu.Producer(self.publish_channel, src_exchange,
+                                       auto_declare=False)
 
         self.producer.publish(
             rpc_resp, serializer='pickle',
@@ -150,7 +151,7 @@ class Server(object):
         LOG.debug("Got request")
         rpc_req = body
 
-        if not isinstance(rpc_req, RpcRequest):
+        if not isinstance(rpc_req, pr.RpcRequest):
             LOG.debug("Request is not an RpcRequest instance")
             return
 
@@ -168,18 +169,18 @@ class Server(object):
 
                 LOG.debug("Result: {!r}".format(result))
                 LOG.debug("Build response")
-                rpc_resp = RpcResponse(result)
+                rpc_resp = pr.RpcResponse(result)
             except Exception as e:
                 LOG.debug("Exception happened: {0}".format(e))
-                rpc_resp = RpcResponse(e)
+                rpc_resp = pr.RpcResponse(e)
 
             result_queue.put(ResultSet(rpc_resp,
                                        message.properties['correlation_id'],
                                        message.properties['reply_to']))
 
-        p = Thread(target=exec_func,
-                   name=message.properties['correlation_id'],
-                   args=(body, message, self.result_queue))
+        p = threading.Thread(target=exec_func,
+                             name=message.properties['correlation_id'],
+                             args=(body, message, self.result_queue))
         p.start()
 
     def register_function(self, func, name):
@@ -232,10 +233,10 @@ class Server(object):
         self.do_run = False
         while not self.is_stopped:
             LOG.debug("Wait server stop...")
-            sleep(0.1)
+            time.sleep(0.1)
 
 
-class Publisher(Thread):
+class Publisher(threading.Thread):
     """This class is a thread class and used internally for sending back
     results to the client.
 
@@ -246,7 +247,7 @@ class Publisher(Thread):
     """
 
     def __init__(self, result_queue, channel):
-        Thread.__init__(self)
+        threading.Thread.__init__(self)
         self.result_queue = result_queue
         self.channel = channel
         self.stop_it = False
@@ -257,21 +258,19 @@ class Publisher(Thread):
                 result_set = self.result_queue.get(block=True, timeout=1)
                 LOG.debug("Publish response: {!r}".format(result_set))
 
-                src_exchange = Exchange(result_set.reply_to,
-                                        durable=False, auto_delete=True)
-                producer = Producer(self.channel, src_exchange,
-                                    auto_declare=False)
+                src_exchange = kombu.Exchange(result_set.reply_to,
+                                              durable=False, auto_delete=True)
+                producer = kombu.Producer(self.channel, src_exchange,
+                                          auto_declare=False)
 
                 producer.publish(result_set.rpc_resp, serializer="pickle",
                                  correlation_id=result_set.correlation_id)
 
-            except queue.Empty:
+            except Queue.Empty:
                 pass
 
     def stop(self):
-        """
-        Stops the Publisher thread
-        """
+        """Stops the Publisher thread."""
         self.stop_it = True
         self.join()
 

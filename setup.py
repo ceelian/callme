@@ -1,7 +1,7 @@
-from setuptools import setup, find_packages
 import codecs
-import sys
 import os
+import setuptools
+import sys
 
 
 sys.path.insert(0, 'src/')
@@ -26,10 +26,10 @@ setuptools_options = {
 }
 
 
-setup(
+setuptools.setup(
     name="callme",
     version=info.__version__,
-    packages=find_packages('src'),
+    packages=setuptools.find_packages('src'),
     package_dir={'': 'src'},
     install_requires=['kombu>=1.2.1,<3.0.0'],
 
