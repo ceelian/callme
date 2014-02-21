@@ -30,11 +30,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import callme
-import time
 
 
 def add(a, b):
-    time.sleep(10)
     return a + b
 
 server = callme.Server(server_id='fooserver',
