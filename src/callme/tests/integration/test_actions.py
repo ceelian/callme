@@ -39,24 +39,27 @@ from callme import exceptions as exc
 
 class ActionsTestCase(unittest.TestCase):
 
+    @staticmethod
+    def _run_server_thread(server):
+        t = threading.Thread(target=server.start)
+        t.daemon = True
+        t.start()
+        return t
+
     def test_method_call(self):
-
-        def madd(a, b):
-            return a + b
-
         server = callme.Server(server_id='fooserver',
                                amqp_host='localhost',
                                amqp_user='guest',
                                amqp_password='guest')
-        server.register_function(madd, 'madd')
-        p = threading.Thread(target=server.start)
-        p.start()
+        server.register_function(lambda a, b: a + b, 'madd')
+        p = self._run_server_thread(server)
 
         try:
-            proxy = callme.Proxy(amqp_host='localhost',
+            proxy = callme.Proxy(server_id='fooserver',
+                                 amqp_host='localhost',
                                  amqp_user='guest',
                                  amqp_password='guest')
-            res = proxy.use_server('fooserver', timeout=0).madd(1, 1)
+            res = proxy.madd(1, 1)
             self.assertEqual(res, 2)
         finally:
             server.stop()
@@ -65,24 +68,20 @@ class ActionsTestCase(unittest.TestCase):
     def test_secured_method_call(self):
         print("IMPORTANT: If this testcase fail you probably haven't setup "
               "your localhost broker with the init_rabbitmq.sh script")
-
-        def madd(a, b):
-            return a + b
-
         server = callme.Server(server_id='fooserver',
                                amqp_host='localhost',
                                amqp_user='s1',
                                amqp_password='s1')
-        server.register_function(madd, 'madd')
-        p = threading.Thread(target=server.start)
-        p.start()
+        server.register_function(lambda a, b: a + b, 'madd')
+        p = self._run_server_thread(server)
 
         try:
-            proxy = callme.Proxy(amqp_host='localhost',
+            proxy = callme.Proxy(server_id='fooserver',
+                                 amqp_host='localhost',
                                  amqp_user='c1',
                                  amqp_password='c1')
 
-            res = proxy.use_server('fooserver', timeout=0).madd(1, 1)
+            res = proxy.madd(1, 1)
             self.assertEqual(res, 2)
         finally:
             server.stop()
@@ -100,16 +99,15 @@ class ActionsTestCase(unittest.TestCase):
                                amqp_password='guest',
                                threaded=True)
         server.register_function(madd, 'madd')
-        p = threading.Thread(target=server.start)
-        p.start()
+        p = self._run_server_thread(server)
 
         def threaded_call(i, results):
-            proxy = callme.Proxy(amqp_host='localhost',
+            proxy = callme.Proxy(server_id='fooserver',
+                                 amqp_host='localhost',
                                  amqp_user='guest',
                                  amqp_password='guest')
 
-            results.append((i, proxy.use_server('fooserver',
-                                                timeout=0).madd(i)))
+            results.append((i, proxy.madd(i)))
 
         results = []
         threads = []
@@ -142,16 +140,15 @@ class ActionsTestCase(unittest.TestCase):
                                amqp_password='guest',
                                threaded=False)
         server.register_function(madd, 'madd')
-        p = threading.Thread(target=server.start)
-        p.start()
+        p = self._run_server_thread(server)
 
         def threaded_call(i, results):
-            proxy = callme.Proxy(amqp_host='localhost',
+            proxy = callme.Proxy(server_id='fooserver',
+                                 amqp_host='localhost',
                                  amqp_user='guest',
                                  amqp_password='guest')
 
-            results.append((i, proxy.use_server('fooserver',
-                                                timeout=0).madd(i)))
+            results.append((i, proxy.madd(i)))
 
         results = []
         threads = []
@@ -173,68 +170,60 @@ class ActionsTestCase(unittest.TestCase):
             self.assertEqual(i, res)
 
     def test_double_method_call(self):
-
-        def madd(a, b):
-            return a + b
-
         server = callme.Server(server_id='fooserver',
                                amqp_host='localhost',
                                amqp_user='guest',
                                amqp_password='guest')
-        server.register_function(madd, 'madd')
-        p = threading.Thread(target=server.start)
-        p.start()
+        server.register_function(lambda a, b: a + b, 'madd')
+        p = self._run_server_thread(server)
 
         try:
-            proxy = callme.Proxy(amqp_host='localhost',
+            proxy = callme.Proxy(server_id='fooserver',
+                                 amqp_host='localhost',
                                  amqp_user='guest',
                                  amqp_password='guest')
 
-            res = proxy.use_server('fooserver', timeout=3).madd(1, 2)
+            res = proxy.use_server(timeout=3).madd(1, 2)
             self.assertEqual(res, 3)
 
-            res = proxy.use_server('fooserver', timeout=1).madd(2, 2)
+            res = proxy.use_server(timeout=1).madd(2, 2)
             self.assertEqual(res, 4)
 
-            res = proxy.use_server('fooserver', timeout=1).madd(2, 3)
+            res = proxy.use_server(timeout=1).madd(2, 3)
             self.assertEqual(res, 5)
         finally:
             server.stop()
         p.join()
 
     def test_timeout_call(self):
-
         callme.Server(server_id='fooserver',
                       amqp_host='localhost',
                       amqp_user='guest',
                       amqp_password='guest')
 
-        proxy = callme.Proxy(amqp_host='localhost',
+        proxy = callme.Proxy(server_id='fooserver',
+                             amqp_host='localhost',
                              amqp_user='guest',
                              amqp_password='guest')
 
         self.assertRaises(exc.RpcTimeout,
-                          proxy.use_server('fooserver', timeout=1).madd, 1, 2)
+                          proxy.use_server(timeout=1).madd, 1, 2)
 
     def test_remote_exception(self):
-
-        def madd(a, b):
-            return a + b
-
         server = callme.Server(server_id='fooserver',
                                amqp_host='localhost',
                                amqp_user='guest',
                                amqp_password='guest')
-        server.register_function(madd, 'madd')
-        p = threading.Thread(target=server.start)
-        p.start()
+        server.register_function(lambda a, b: a + b, 'madd')
+        p = self._run_server_thread(server)
 
         try:
-            proxy = callme.Proxy(amqp_host='localhost',
+            proxy = callme.Proxy(server_id='fooserver',
+                                 amqp_host='localhost',
                                  amqp_user='guest',
                                  amqp_password='guest')
 
-            self.assertRaises(TypeError, proxy.use_server('fooserver').madd)
+            self.assertRaises(TypeError, proxy.madd)
         finally:
             server.stop()
         p.join()
@@ -242,28 +231,24 @@ class ActionsTestCase(unittest.TestCase):
     def test_ssl_method_call(self):
         print("IMPORTANT: If this testcase fail you probably haven't setup "
               "your localhost broker with server-side SSL")
-
-        def madd(a, b):
-            return a + b
-
         server = callme.Server(server_id='fooserver',
                                amqp_host='localhost',
                                amqp_user='guest',
                                amqp_password='guest',
                                ssl=True,
                                amqp_port=5671)
-        server.register_function(madd, 'madd')
-        p = threading.Thread(target=server.start)
-        p.start()
+        server.register_function(lambda a, b: a + b, 'madd')
+        p = self._run_server_thread(server)
 
         try:
-            proxy = callme.Proxy(amqp_host='localhost',
+            proxy = callme.Proxy(server_id='fooserver',
+                                 amqp_host='localhost',
                                  amqp_user='guest',
                                  amqp_password='guest',
                                  ssl=True,
                                  amqp_port=5671)
 
-            res = proxy.use_server('fooserver', timeout=0).madd(1, 1)
+            res = proxy.madd(1, 1)
         finally:
             server.stop()
         p.join()
@@ -271,36 +256,29 @@ class ActionsTestCase(unittest.TestCase):
 
     def test_multiple_server_calls(self):
 
-        def func_a():
-            return "a"
-
-        def func_b():
-            return "b"
-
-        #Start Server A
+        # start server A
         server_a = callme.Server(server_id='server_a',
                                  amqp_host='localhost',
                                  amqp_user='guest',
                                  amqp_password='guest')
-        server_a.register_function(func_a, 'f')
-        p_a = threading.Thread(target=server_a.start)
-        p_a.start()
+        server_a.register_function(lambda: 'a', 'f')
+        p_a = self._run_server_thread(server_a)
 
-        #Start Server B
+        # start server B
         server_b = callme.Server(server_id='server_b',
                                  amqp_host='localhost',
                                  amqp_user='guest',
                                  amqp_password='guest')
-        server_b.register_function(func_b, 'f')
-        p_b = threading.Thread(target=server_b.start)
-        p_b.start()
+        server_b.register_function(lambda: 'b', 'f')
+        p_b = self._run_server_thread(server_b)
 
         try:
-            proxy = callme.Proxy(amqp_host='localhost',
+            proxy = callme.Proxy(server_id='server_a',
+                                 amqp_host='localhost',
                                  amqp_user='guest',
                                  amqp_password='guest')
 
-            res = proxy.use_server('server_a').f()
+            res = proxy.f()
             self.assertEqual(res, 'a')
 
             res = proxy.use_server('server_b').f()

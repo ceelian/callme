@@ -60,7 +60,7 @@ class Proxy(object):
     response = None
 
     def __init__(self,
-                 server_id=None,
+                 server_id,
                  amqp_host='localhost',
                  amqp_user='guest',
                  amqp_password='guest',
@@ -69,7 +69,7 @@ class Proxy(object):
                  ssl=False,
                  timeout=0):
 
-        self.server_id = server_id
+        self._server_id = server_id
         self._timeout = timeout
         self.is_received = False
         self.connection = kombu.BrokerConnection(hostname=amqp_host,
@@ -127,7 +127,7 @@ class Proxy(object):
         """
 
         if server_id is not None:
-            self.server_id = server_id
+            self._server_id = server_id
         if timeout is not None:
             self._timeout = timeout
         return self
@@ -143,7 +143,7 @@ class Proxy(object):
         """
         LOG.debug("Request: {!r}; Params: {!r}".format(methodname, params))
 
-        target_exchange = kombu.Exchange("server_"+self.server_id+"_ex",
+        target_exchange = kombu.Exchange("server_"+self._server_id+"_ex",
                                          durable=False, auto_delete=True)
         producer = kombu.Producer(channel=self.channel,
                                   exchange=target_exchange,
