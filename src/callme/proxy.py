@@ -35,9 +35,10 @@ import socket
 import time
 import uuid
 
+from kombu import utils
+
 from callme import exceptions as exc
 from callme import protocol
-from kombu import utils
 
 LOG = logging.getLogger(__name__)
 
@@ -56,7 +57,6 @@ class Proxy(object):
     :keyword ssl: use SSL connection for the AMQP Broker
     :keyword timeout: default timeout for calls in seconds
     """
-    timeout = 0
     response = None
 
     def __init__(self,
@@ -70,7 +70,7 @@ class Proxy(object):
                  timeout=0):
 
         self.server_id = server_id
-        self.timeout = 0
+        self._timeout = timeout
         self.is_received = False
         self.connection = kombu.BrokerConnection(hostname=amqp_host,
                                                  userid=amqp_user,
@@ -79,7 +79,6 @@ class Proxy(object):
                                                  port=amqp_port,
                                                  ssl=ssl)
         self.channel = self.connection.channel()
-        self.timeout = timeout
         my_uuid = utils.gen_unique_id()
         self.reply_id = "client_"+amqp_user+"_ex_"+my_uuid
         self.corr_id = None
@@ -130,7 +129,7 @@ class Proxy(object):
         if server_id is not None:
             self.server_id = server_id
         if timeout is not None:
-            self.timeout = timeout
+            self._timeout = timeout
         return self
 
     def __request(self, methodname, params):
@@ -179,12 +178,12 @@ class Proxy(object):
         while not self.is_received:
             try:
                 LOG.debug("Draining events... timeout: {0}, elapsed: {1}"
-                          .format(self.timeout, elapsed))
+                          .format(self._timeout, elapsed))
                 self.connection.drain_events(timeout=1)
             except socket.timeout:
-                if self.timeout > 0:
+                if self._timeout > 0:
                     elapsed = time.time() - start_time
-                    if elapsed > self.timeout:
+                    if elapsed > self._timeout:
                         raise exc.RpcTimeout("RPC Request timeout")
 
     def __getattr__(self, name):
