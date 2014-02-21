@@ -65,28 +65,6 @@ class ActionsTestCase(unittest.TestCase):
             server.stop()
         p.join()
 
-    def test_secured_method_call(self):
-        print("IMPORTANT: If this testcase fail you probably haven't setup "
-              "your localhost broker with the init_rabbitmq.sh script")
-        server = callme.Server(server_id='fooserver',
-                               amqp_host='localhost',
-                               amqp_user='s1',
-                               amqp_password='s1')
-        server.register_function(lambda a, b: a + b, 'madd')
-        p = self._run_server_thread(server)
-
-        try:
-            proxy = callme.Proxy(server_id='fooserver',
-                                 amqp_host='localhost',
-                                 amqp_user='c1',
-                                 amqp_password='c1')
-
-            res = proxy.madd(1, 1)
-            self.assertEqual(res, 2)
-        finally:
-            server.stop()
-        p.join()
-
     def test_threaded_method_call(self):
 
         def madd(a):
@@ -227,32 +205,6 @@ class ActionsTestCase(unittest.TestCase):
         finally:
             server.stop()
         p.join()
-
-    def test_ssl_method_call(self):
-        print("IMPORTANT: If this testcase fail you probably haven't setup "
-              "your localhost broker with server-side SSL")
-        server = callme.Server(server_id='fooserver',
-                               amqp_host='localhost',
-                               amqp_user='guest',
-                               amqp_password='guest',
-                               ssl=True,
-                               amqp_port=5671)
-        server.register_function(lambda a, b: a + b, 'madd')
-        p = self._run_server_thread(server)
-
-        try:
-            proxy = callme.Proxy(server_id='fooserver',
-                                 amqp_host='localhost',
-                                 amqp_user='guest',
-                                 amqp_password='guest',
-                                 ssl=True,
-                                 amqp_port=5671)
-
-            res = proxy.madd(1, 1)
-        finally:
-            server.stop()
-        p.join()
-        self.assertEqual(res, 2)
 
     def test_multiple_server_calls(self):
 
