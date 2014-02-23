@@ -1,6 +1,3 @@
-[MASTER]
-ignore=callme/tests
-
 [MESSAGES CONTROL]
 
 # Disable the message(s) with the given id(s).
