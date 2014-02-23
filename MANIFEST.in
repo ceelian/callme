@@ -9,4 +9,3 @@ include TODO
 include Changelog
 recursive-include doc *
 recursive-include src/callme *.py
-
