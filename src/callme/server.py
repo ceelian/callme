@@ -214,14 +214,17 @@ class Server(object):
                              args=(message, self._result_queue))
         p.start()
 
-    def register_function(self, func, name):
+    def register_function(self, func, name=None):
         """Registers a function as rpc function so that is accessible from the
         proxy.
 
         :param func: the function we want to provide as rpc method
         :param name: the name with which the function is visible to the clients
         """
-        self._func_dict[name] = func
+        if not callable(func):
+            raise ValueError("The '%s' is not callable." % func)
+
+        self._func_dict[name if name is not None else func.__name__] = func
 
     def start(self):
         """Starts the server. If `threaded` is `True` also starts the Publisher
