@@ -30,6 +30,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import callme
+
 proxy = callme.Proxy(server_id='fooserver', amqp_host='localhost')
 
 print(proxy.add(1, 1))

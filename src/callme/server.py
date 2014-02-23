@@ -36,11 +36,11 @@ import threading
 import time
 
 import six
+
 if six.PY2:
     import Queue as queue
 else:
     import queue
-
 
 from callme import exceptions as exc
 from callme import protocol as pr
@@ -73,53 +73,53 @@ class Server(object):
                  ssl=False,
                  threaded=False):
         LOG.debug("Server ID: {0}".format(server_id))
-        self.server_id = server_id
-        self.threaded = threaded
-        self.do_run = True
-        self.is_stopped = True
-        self.func_dict = {}
-        self.result_queue = queue.Queue()
+        self._server_id = server_id
+        self._threaded = threaded
+        self._do_run = True
+        self._is_stopped = True
+        self._func_dict = {}
+        self._result_queue = queue.Queue()
         target_exchange = kombu.Exchange("server_"+server_id+"_ex",
                                          durable=False, auto_delete=True)
-        self.target_queue = kombu.Queue("server_"+server_id+"_queue",
-                                        exchange=target_exchange,
-                                        auto_delete=True,
-                                        durable=False)
+        target_queue = kombu.Queue("server_"+server_id+"_queue",
+                                   exchange=target_exchange,
+                                   auto_delete=True,
+                                   durable=False)
 
-        self.connection = kombu.BrokerConnection(hostname=amqp_host,
-                                                 userid=amqp_user,
-                                                 password=amqp_password,
-                                                 virtual_host=amqp_vhost,
-                                                 port=amqp_port,
-                                                 ssl=ssl)
+        self._connection = kombu.BrokerConnection(hostname=amqp_host,
+                                                  userid=amqp_user,
+                                                  password=amqp_password,
+                                                  virtual_host=amqp_vhost,
+                                                  port=amqp_port,
+                                                  ssl=ssl)
         try:
-            self.connection.connect()
+            self._connection.connect()
         except IOError:
             LOG.critical("Connection Error: Probably AMQP User has"
                          " not enough permissions")
             raise exc.ConnectionError("Connection Error: Probably AMQP User "
                                       "has not enough permissions")
 
-        self.channel = self.connection.channel()
+        self._channel = self._connection.channel()
 
-        self.publish_connection = kombu.BrokerConnection(
+        self._publish_connection = kombu.BrokerConnection(
             hostname=amqp_host,
             userid=amqp_user,
             password=amqp_password,
             virtual_host=amqp_vhost,
             port=amqp_port,
             ssl=ssl)
-        self.publish_channel = self.publish_connection.channel()
+        self._publish_channel = self._publish_connection.channel()
 
         # consume
-        self.consumer = kombu.Consumer(self.channel, self.target_queue,
-                                       accept=['pickle'])
-        if self.threaded:
-            self.consumer.register_callback(self._on_request_threaded)
+        self._consumer = kombu.Consumer(self._channel, target_queue,
+                                        accept=['pickle'])
+        if self._threaded:
+            self._consumer.register_callback(self._on_request_threaded)
         else:
-            self.consumer.register_callback(self._on_request)
-        self.consumer.consume()
-        self.pub_thread = None
+            self._consumer.register_callback(self._on_request)
+        self._consumer.consume()
+        self._pub_thread = None
 
         LOG.debug("Initialization done")
 
@@ -139,13 +139,13 @@ class Server(object):
             LOG.debug("Request is not an RpcRequest instance")
             return
 
-        LOG.debug("Call func on server {0}".format(self.server_id))
+        LOG.debug("Call func on server {0}".format(self._server_id))
         try:
             LOG.debug("Correlation id: {0}".format(
                       message.properties['correlation_id']))
             LOG.debug("Call func with args {!r}".format(rpc_req.func_args))
 
-            result = self.func_dict[rpc_req.func_name](*rpc_req.func_args)
+            result = self._func_dict[rpc_req.func_name](*rpc_req.func_args)
 
             LOG.debug("Result: {!r}".format(result))
             LOG.debug("Build response")
@@ -160,7 +160,7 @@ class Server(object):
         # producer
         src_exchange = kombu.Exchange(message.properties['reply_to'],
                                       durable=False, auto_delete=True)
-        producer = kombu.Producer(self.publish_channel, src_exchange,
+        producer = kombu.Producer(self._publish_channel, src_exchange,
                                   auto_declare=False)
 
         producer.publish(
@@ -190,13 +190,13 @@ class Server(object):
         LOG.debug("Acknowledge")
 
         def exec_func(message, result_queue):
-            LOG.debug("Call func on server{0}".format(self.server_id))
+            LOG.debug("Call func on server{0}".format(self._server_id))
             try:
                 LOG.debug("Correlation id: {0}".format(
                           message.properties['correlation_id']))
                 LOG.debug("Call func with args {!r}".format(rpc_req.func_args))
 
-                result = self.func_dict[rpc_req.func_name](*rpc_req.func_args)
+                result = self._func_dict[rpc_req.func_name](*rpc_req.func_args)
 
                 LOG.debug("Result: {!r}".format(result))
                 LOG.debug("Build response")
@@ -211,7 +211,7 @@ class Server(object):
 
         p = threading.Thread(target=exec_func,
                              name=message.properties['correlation_id'],
-                             args=(message, self.result_queue))
+                             args=(message, self._result_queue))
         p.start()
 
     def register_function(self, func, name):
@@ -221,48 +221,48 @@ class Server(object):
         :param func: the function we want to provide as rpc method
         :param name: the name with which the function is visible to the clients
         """
-        self.func_dict[name] = func
+        self._func_dict[name] = func
 
     def start(self):
         """Starts the server. If `threaded` is `True` also starts the Publisher
         thread.
         """
-        self.is_stopped = False
-        if self.threaded:
-            self.pub_thread = Publisher(self.result_queue,
-                                        self.publish_channel)
-            self.pub_thread.start()
+        self._is_stopped = False
+        if self._threaded:
+            self._pub_thread = Publisher(self._result_queue,
+                                         self._publish_channel)
+            self._pub_thread.start()
 
-        while self.do_run:
+        while self._do_run:
             try:
-                LOG.debug("Draining events: {0}".format(self.do_run))
-                self.connection.drain_events(timeout=1)
+                LOG.debug("Draining events: {0}".format(self._do_run))
+                self._connection.drain_events(timeout=1)
             except socket.timeout:
-                LOG.debug("do_run: {0}".format(self.do_run))
+                LOG.debug("do_run: {0}".format(self._do_run))
             except Exception as e:
                 LOG.debug("Interrupt exception:{0}".format(e))
-                if self.threaded:
-                    self.pub_thread.stop()
-                self.consumer.cancel()
-                self.connection.close()
-                self.publish_connection.close()
-                self.is_stopped = True
+                if self._threaded:
+                    self._pub_thread.stop()
+                self._consumer.cancel()
+                self._connection.close()
+                self._publish_connection.close()
+                self._is_stopped = True
                 return
 
-        if self.threaded:
-            self.pub_thread.stop()
+        if self._threaded:
+            self._pub_thread.stop()
         LOG.debug("Normal exit")
-        self.consumer.cancel()
-        self.connection.close()
-        self.publish_connection.close()
+        self._consumer.cancel()
+        self._connection.close()
+        self._publish_connection.close()
         LOG.debug("Everything closed")
-        self.is_stopped = True
+        self._is_stopped = True
 
     def stop(self):
         """Stops the server."""
         LOG.debug("Stop server")
-        self.do_run = False
-        while not self.is_stopped:
+        self._do_run = False
+        while not self._is_stopped:
             LOG.debug("Wait server stop...")
             time.sleep(0.1)
 
