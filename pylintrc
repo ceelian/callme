@@ -1,7 +1,7 @@
 [MESSAGES CONTROL]
 
 # Disable the message(s) with the given id(s).
-disable=C0103,C0111,W0106,W0141,W0703,F0401,R0801
+disable=C0103,C0111,W0106,W0141,W0142,W0703,F0401,R0801
 
 [BASIC]
 

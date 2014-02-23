@@ -112,8 +112,7 @@ class Server(object):
         self._publish_channel = self._publish_connection.channel()
 
         # consume
-        self._consumer = kombu.Consumer(self._channel, target_queue,
-                                        accept=['pickle'])
+        self._consumer = kombu.Consumer(self._channel, target_queue)
         if self._threaded:
             self._consumer.register_callback(self._on_request_threaded)
         else:
@@ -135,24 +134,22 @@ class Server(object):
         LOG.debug("Got request")
         rpc_req = body
 
-        if not isinstance(rpc_req, pr.RpcRequest):
-            LOG.debug("Request is not an RpcRequest instance")
-            return
-
         LOG.debug("Call func on server {0}".format(self._server_id))
         try:
             LOG.debug("Correlation id: {0}".format(
                       message.properties['correlation_id']))
-            LOG.debug("Call func with args {!r}".format(rpc_req.func_args))
+            func_name = rpc_req['func_name']
+            func_args = rpc_req['func_args']
+            LOG.debug("Call func with args {!r}".format(func_args))
 
-            result = self._func_dict[rpc_req.func_name](*rpc_req.func_args)
+            result = self._func_dict[func_name](*func_args)
 
             LOG.debug("Result: {!r}".format(result))
             LOG.debug("Build response")
-            rpc_resp = pr.RpcResponse(result)
+            rpc_resp = dict(status=pr.SUCCESS, result=result)
         except Exception as e:
             LOG.debug("Exception happened: {0}".format(e))
-            rpc_resp = pr.RpcResponse(e)
+            rpc_resp = dict(status=pr.ERROR, result=str(e))
 
         message.ack()
 
@@ -163,9 +160,8 @@ class Server(object):
         producer = kombu.Producer(self._publish_channel, src_exchange,
                                   auto_declare=False)
 
-        producer.publish(
-            rpc_resp, serializer='pickle',
-            correlation_id=message.properties['correlation_id'])
+        producer.publish(rpc_resp,
+                         correlation_id=message.properties['correlation_id'])
 
         LOG.debug("Acknowledge")
 
@@ -182,10 +178,6 @@ class Server(object):
         LOG.debug("Got request")
         rpc_req = body
 
-        if not isinstance(rpc_req, pr.RpcRequest):
-            LOG.debug("Request is not an RpcRequest instance")
-            return
-
         message.ack()
         LOG.debug("Acknowledge")
 
@@ -194,16 +186,18 @@ class Server(object):
             try:
                 LOG.debug("Correlation id: {0}".format(
                           message.properties['correlation_id']))
-                LOG.debug("Call func with args {!r}".format(rpc_req.func_args))
+                func_name = rpc_req['func_name']
+                func_args = rpc_req['func_args']
+                LOG.debug("Call func with args {!r}".format(func_args))
 
-                result = self._func_dict[rpc_req.func_name](*rpc_req.func_args)
+                result = self._func_dict[func_name](*func_args)
 
                 LOG.debug("Result: {!r}".format(result))
                 LOG.debug("Build response")
-                rpc_resp = pr.RpcResponse(result)
+                rpc_resp = dict(status=pr.SUCCESS, result=result)
             except Exception as e:
                 LOG.debug("Exception happened: {0}".format(e))
-                rpc_resp = pr.RpcResponse(e)
+                rpc_resp = dict(status=pr.ERROR, result=str(e))
 
             result_queue.put(ResultSet(rpc_resp,
                                        message.properties['correlation_id'],
@@ -297,7 +291,7 @@ class Publisher(threading.Thread):
                 producer = kombu.Producer(self.channel, src_exchange,
                                           auto_declare=False)
 
-                producer.publish(result_set.rpc_resp, serializer="pickle",
+                producer.publish(result_set.rpc_resp,
                                  correlation_id=result_set.correlation_id)
 
             except queue.Empty:

@@ -201,7 +201,7 @@ class ActionsTestCase(unittest.TestCase):
                                  amqp_user='guest',
                                  amqp_password='guest')
 
-            self.assertRaises(TypeError, proxy.madd)
+            self.assertRaises(exc.RemoteException, proxy.madd)
         finally:
             server.stop()
         p.join()
