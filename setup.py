@@ -31,7 +31,7 @@ setuptools.setup(
     version=info.__version__,
     packages=setuptools.find_packages('src'),
     package_dir={'': 'src'},
-    install_requires=['kombu>=1.2.1'],
+    install_requires=['kombu>=3.0.0'],
 
     # metadata for upload to PyPI
     author=info.__author__,
