@@ -80,11 +80,12 @@ class Server(object):
         self._func_dict = {}
         self._result_queue = queue.Queue()
         target_exchange = kombu.Exchange("server_"+server_id+"_ex",
-                                         durable=False, auto_delete=True)
+                                         durable=False,
+                                         auto_delete=True)
         target_queue = kombu.Queue("server_"+server_id+"_queue",
                                    exchange=target_exchange,
-                                   auto_delete=True,
-                                   durable=False)
+                                   durable=False,
+                                   auto_delete=True)
 
         self._connection = kombu.BrokerConnection(hostname=amqp_host,
                                                   userid=amqp_user,
@@ -100,19 +101,17 @@ class Server(object):
             raise exc.ConnectionError("Connection Error: Probably AMQP User "
                                       "has not enough permissions")
 
-        self._channel = self._connection.channel()
-
         self._publish_connection = kombu.BrokerConnection(
             hostname=amqp_host,
             userid=amqp_user,
             password=amqp_password,
             virtual_host=amqp_vhost,
             port=amqp_port,
-            ssl=ssl)
-        self._publish_channel = self._publish_connection.channel()
+            ssl=ssl
+        )
 
         # consume
-        self._consumer = kombu.Consumer(self._channel, target_queue)
+        self._consumer = kombu.Consumer(self._connection, target_queue)
         if self._threaded:
             self._consumer.register_callback(self._on_request_threaded)
         else:
@@ -157,7 +156,7 @@ class Server(object):
         # producer
         src_exchange = kombu.Exchange(message.properties['reply_to'],
                                       durable=False, auto_delete=True)
-        producer = kombu.Producer(self._publish_channel, src_exchange,
+        producer = kombu.Producer(self._publish_connection, src_exchange,
                                   auto_declare=False)
 
         producer.publish(rpc_resp,
@@ -227,7 +226,7 @@ class Server(object):
         self._is_stopped = False
         if self._threaded:
             self._pub_thread = Publisher(self._result_queue,
-                                         self._publish_channel)
+                                         self._publish_connection)
             self._pub_thread.start()
 
         while self._do_run:

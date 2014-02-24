@@ -78,7 +78,6 @@ class Proxy(object):
                                                   virtual_host=amqp_vhost,
                                                   port=amqp_port,
                                                   ssl=ssl)
-        self._channel = self._connection.channel()
         my_uuid = utils.gen_unique_id()
         self._reply_id = "client_"+amqp_user+"_ex_"+my_uuid
         self._corr_id = None
@@ -90,9 +89,9 @@ class Proxy(object):
                                 auto_delete=True)
 
         # must declare in advance so reply message isn't published before
-        src_queue(self._channel).declare()
+        src_queue(self._connection).declare()
 
-        consumer = kombu.Consumer(channel=self._channel, queues=src_queue,
+        consumer = kombu.Consumer(channel=self._connection, queues=src_queue,
                                   callbacks=[self._on_response])
         consumer.consume()
 
@@ -130,30 +129,29 @@ class Proxy(object):
             self._timeout = timeout
         return self
 
-    def __request(self, methodname, params):
+    def __request(self, func_name, func_args):
         """The remote-method-call execution function.
 
-        :param methodname: name of the method that should be executed
-        :param params: parameter for the remote-method
-        :type methodname: string
-        :type params: list of parameters
+        :param func_name: name of the method that should be executed
+        :param func_args: parameter for the remote-method
+        :type func_name: string
+        :type func_args: list of parameters
         :rtype: result of the method
         """
-        LOG.debug("Request: {!r}; Params: {!r}".format(methodname, params))
+        LOG.debug("Request: {!r}; Params: {!r}".format(func_name, func_args))
 
         target_exchange = kombu.Exchange("server_"+self._server_id+"_ex",
                                          durable=False, auto_delete=True)
-        producer = kombu.Producer(channel=self._channel,
+        producer = kombu.Producer(channel=self._connection,
                                   exchange=target_exchange,
                                   auto_declare=False)
 
-        rpc_req = dict(func_name=methodname, func_args=params)
+        rpc_req = dict(func_name=func_name, func_args=func_args)
         self._corr_id = str(uuid.uuid4())
-        LOG.debug("RpcRequest build")
         LOG.debug("Correlation id: {0}".format(self._corr_id))
         producer.publish(rpc_req, reply_to=self._reply_id,
                          correlation_id=self._corr_id)
-        LOG.debug("Producer published")
+        LOG.debug("Producer published: %s" % rpc_req)
 
         self._wait_for_result()
 
