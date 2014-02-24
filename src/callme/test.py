@@ -29,37 +29,43 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# pylint: disable=W0212
-
-from callme import proxy
-from callme import test
+import mock
+import unittest
 
 
-class TestProxy(test.MockTestCase):
+class TestCase(unittest.TestCase):
+    """Base test case class for all unit tests."""
+
+
+class MockTestCase(TestCase):
 
     def setUp(self):
-        super(TestProxy, self).setUp()
+        super(MockTestCase, self).setUp()
+        self.master_mock = mock.Mock(name='master_mock')
 
-        # mock kombu Connection
-        self.conn_mock, self.conn_inst_mock = self._mock_class(
-            proxy.kombu, 'BrokerConnection')
+    def _mock_class(self, module, name, autospec=True, attach_as=None):
+        """Mock class and its instance."""
+        if autospec:
+            instance_mock = mock.Mock(spec_set=getattr(module, name))
+        else:
+            instance_mock = mock.Mock()
 
-        # mock kombu Consumer
-        self.consumer_mock, self.consumer_inst_mock = self._mock_class(
-            proxy.kombu, 'Consumer')
+        patcher = mock.patch.object(module, name, autospec=autospec)
+        class_mock = patcher.start()
+        self.addCleanup(patcher.stop)
+        class_mock.return_value = instance_mock
 
-    def test_use_server_default(self):
-        s = proxy.Proxy('fooserver')
-        self.assertEqual(s._server_id, 'fooserver')
-        self.assertEqual(s._timeout, 0)
-        s.use_server()
-        self.assertEqual(s._server_id, 'fooserver')
-        self.assertEqual(s._timeout, 0)
+        if attach_as is None:
+            attach_class_as = name
+            attach_instance_as = name.lower()
+        else:
+            attach_class_as = attach_as + '_class'
+            attach_instance_as = attach_as
 
-    def test_use_server_custom(self):
-        s = proxy.Proxy('fooserver')
-        self.assertEqual(s._server_id, 'fooserver')
-        self.assertEqual(s._timeout, 0)
-        s.use_server('test_server', 30)
-        self.assertEqual(s._server_id, 'test_server')
-        self.assertEqual(s._timeout, 30)
+        self.master_mock.attach_mock(class_mock, attach_class_as)
+        self.master_mock.attach_mock(instance_mock, attach_instance_as)
+
+        return class_mock, instance_mock
+
+    def _reset_master_mock(self):
+        self.master_mock.reset_mock()

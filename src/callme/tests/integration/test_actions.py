@@ -32,12 +32,12 @@
 import callme
 import threading
 import time
-import unittest
 
 from callme import exceptions as exc
+from callme import test
 
 
-class ActionsTestCase(unittest.TestCase):
+class ActionsTestCase(test.TestCase):
 
     @staticmethod
     def _run_server_thread(server):

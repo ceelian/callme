@@ -31,12 +31,30 @@
 
 # pylint: disable=W0212
 
-import unittest
-
 from callme import server
+from callme import test
 
 
-class TestServer(unittest.TestCase):
+class TestServer(test.MockTestCase):
+
+    def setUp(self):
+        super(TestServer, self).setUp()
+
+        # mock kombu Exchange
+        self.exchange_mock, self.exchange_inst_mock = self._mock_class(
+            server.kombu, 'Exchange')
+
+        # mock kombu Queue
+        self.queue_mock, self.queue_inst_mock = self._mock_class(
+            server.kombu, 'Queue')
+
+        # mock kombu Connection
+        self.conn_mock, self.conn_inst_mock = self._mock_class(
+            server.kombu, 'BrokerConnection')
+
+        # mock kombu Consumer
+        self.consumer_mock, self.consumer_inst_mock = self._mock_class(
+            server.kombu, 'Consumer')
 
     def test_register_function(self):
         def func():
