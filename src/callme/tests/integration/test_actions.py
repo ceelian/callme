@@ -159,7 +159,7 @@ class ActionsTestCase(test.TestCase):
         try:
             proxy = callme.Proxy(server_id='fooserver')
 
-            self.assertRaises(exc.RemoteException, proxy.madd)
+            self.assertRaises(TypeError, proxy.madd)
         finally:
             server.stop()
         p.join()

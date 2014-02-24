@@ -92,6 +92,7 @@ class Proxy(object):
         src_queue(self._connection).declare()
 
         consumer = kombu.Consumer(channel=self._connection, queues=src_queue,
+                                  accept=['pickle'],
                                   callbacks=[self._on_response])
         consumer.consume()
 
@@ -105,7 +106,8 @@ class Proxy(object):
             information
         """
 
-        if self._corr_id == message.properties['correlation_id']:
+        if self._corr_id == message.properties['correlation_id'] and \
+                isinstance(body, pr.RpcResponse):
             self.response = body
             self._is_received = True
             message.ack()
@@ -146,21 +148,22 @@ class Proxy(object):
                                   exchange=target_exchange,
                                   auto_declare=False)
 
-        rpc_req = dict(func_name=func_name, func_args=func_args)
+        rpc_req = pr.RpcRequest(func_name, func_args)
         self._corr_id = str(uuid.uuid4())
         LOG.debug("Correlation id: {0}".format(self._corr_id))
-        producer.publish(rpc_req, reply_to=self._reply_id,
+        producer.publish(rpc_req, serializer='pickle',
+                         reply_to=self._reply_id,
                          correlation_id=self._corr_id)
         LOG.debug("Producer published: %s" % rpc_req)
 
         self._wait_for_result()
 
-        result = self.response['result']
+        result = self.response.result
         LOG.debug("Result: {!r}".format(result))
         self._is_received = False
 
-        if self.response['status'] == pr.ERROR:
-            raise exc.RemoteException(result)
+        if self.response.is_exception:
+            raise result
         return result
 
     def _wait_for_result(self):

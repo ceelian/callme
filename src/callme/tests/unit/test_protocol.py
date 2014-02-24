@@ -29,14 +29,27 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-class CallmeException(Exception):
-    """Base exception for all callme exceptions."""
-
-
-class ConnectionError(CallmeException):
-    """Raised when failed to connect to AMQP."""
+from callme import protocol
+from callme import test
 
 
-class RpcTimeout(CallmeException):
-    """Raised when RPC request timed out."""
+class TestRpcRequest(test.TestCase):
+
+    def test_creation(self):
+        func_args = {'arg1': 3, 'arg2': 7}
+        request = protocol.RpcRequest('func_name', func_args)
+        self.assertEqual(request.func_name, 'func_name')
+        self.assertEqual(request.func_args, func_args)
+
+
+class TestRpcResponse(test.TestCase):
+
+    def test_creation_default(self):
+        response = protocol.RpcResponse('result')
+        self.assertEqual(response.result, 'result')
+        self.assertFalse(response.is_exception)
+
+    def test_creation_exception(self):
+        response = protocol.RpcResponse(Exception('test'))
+        self.assertIsInstance(response.result, Exception)
+        self.assertTrue(response.is_exception)
