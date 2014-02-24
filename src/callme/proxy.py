@@ -175,8 +175,6 @@ class Proxy(object):
         start_time = time.time()
         while not self._is_received:
             try:
-                LOG.debug("Draining events... timeout: {0}, elapsed: {1}"
-                          .format(self._timeout, elapsed))
                 self._connection.drain_events(timeout=1)
             except socket.timeout:
                 if self._timeout > 0:

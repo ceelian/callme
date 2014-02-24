@@ -239,7 +239,7 @@ class Server(object):
                 LOG.debug("Draining events: {0}".format(self._do_run))
                 self._connection.drain_events(timeout=1)
             except socket.timeout:
-                LOG.debug("do_run: {0}".format(self._do_run))
+                pass
             except Exception as e:
                 LOG.debug("Interrupt exception:{0}".format(e))
                 if self._threaded:
