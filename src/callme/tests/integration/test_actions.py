@@ -46,53 +46,59 @@ class ActionsTestCase(test.TestCase):
         t.start()
         return t
 
-    def test_method_call(self):
-        server = callme.Server(server_id='fooserver',
-                               amqp_host='localhost',
-                               amqp_user='guest',
-                               amqp_password='guest')
+    def test_method_single_call(self):
+        server = callme.Server(server_id='fooserver')
         server.register_function(lambda a, b: a + b, 'madd')
         p = self._run_server_thread(server)
 
         try:
-            proxy = callme.Proxy(server_id='fooserver',
-                                 amqp_host='localhost',
-                                 amqp_user='guest',
-                                 amqp_password='guest')
-            res = proxy.madd(1, 1)
-            self.assertEqual(res, 2)
+            result = callme.Proxy(server_id='fooserver').madd(1, 1)
+            self.assertEqual(result, 2)
         finally:
             server.stop()
         p.join()
 
-    def test_threaded_method_call(self):
+    def test_method_multiple_calls(self):
+        server = callme.Server(server_id='fooserver')
+        server.register_function(lambda a, b: a + b, 'madd')
+        p = self._run_server_thread(server)
+
+        try:
+            proxy = callme.Proxy(server_id='fooserver')
+
+            result = proxy.use_server(timeout=3).madd(1, 2)
+            self.assertEqual(result, 3)
+
+            result = proxy.use_server(timeout=2).madd(2, 2)
+            self.assertEqual(result, 4)
+
+            result = proxy.use_server(timeout=1).madd(2, 3)
+            self.assertEqual(result, 5)
+        finally:
+            server.stop()
+        p.join()
+
+    def test_serial_server_concurrent_calls(self):
 
         def madd(a):
-            time.sleep(1)
+            time.sleep(0.1)
             return a
 
-        server = callme.Server(server_id='fooserver',
-                               amqp_host='localhost',
-                               amqp_user='guest',
-                               amqp_password='guest',
-                               threaded=True)
+        server = callme.Server(server_id='fooserver')
         server.register_function(madd, 'madd')
         p = self._run_server_thread(server)
 
         def threaded_call(i, results):
-            proxy = callme.Proxy(server_id='fooserver',
-                                 amqp_host='localhost',
-                                 amqp_user='guest',
-                                 amqp_password='guest')
-
+            proxy = callme.Proxy(server_id='fooserver')
             results.append((i, proxy.madd(i)))
 
         results = []
         threads = []
         try:
-            # start 10 threads who call "parallel"
-            for i in range(10):
+            # start 5 threads who call "parallel"
+            for i in range(5):
                 t = threading.Thread(target=threaded_call, args=(i, results))
+                t.daemon = True
                 t.start()
                 threads.append(t)
 
@@ -103,138 +109,81 @@ class ActionsTestCase(test.TestCase):
         p.join()
 
         # check results
-        for i, res in results:
-            self.assertEqual(i, res)
+        for i, result in results:
+            self.assertEqual(i, result)
 
-    def test_half_threaded_method_call(self):
+    def test_threaded_server_concurrent_calls(self):
 
         def madd(a):
             time.sleep(0.1)
             return a
 
-        server = callme.Server(server_id='fooserver',
-                               amqp_host='localhost',
-                               amqp_user='guest',
-                               amqp_password='guest',
-                               threaded=False)
+        server = callme.Server(server_id='fooserver', threaded=True)
         server.register_function(madd, 'madd')
         p = self._run_server_thread(server)
 
         def threaded_call(i, results):
-            proxy = callme.Proxy(server_id='fooserver',
-                                 amqp_host='localhost',
-                                 amqp_user='guest',
-                                 amqp_password='guest')
-
-            results.append((i, proxy.madd(i)))
+            results.append((i, callme.Proxy(server_id='fooserver').madd(i)))
 
         results = []
         threads = []
         try:
-            #start 3 threads who call "parallel"
-            for i in range(3):
+            # start 5 threads who call "parallel"
+            for i in range(5):
                 t = threading.Thread(target=threaded_call, args=(i, results))
+                t.daemon = True
                 t.start()
                 threads.append(t)
 
-            #wait until all threads are finished
+            # wait until all threads are finished
             [t.join() for t in threads]
         finally:
             server.stop()
         p.join()
 
         # check results
-        for i, res in results:
-            self.assertEqual(i, res)
-
-    def test_double_method_call(self):
-        server = callme.Server(server_id='fooserver',
-                               amqp_host='localhost',
-                               amqp_user='guest',
-                               amqp_password='guest')
-        server.register_function(lambda a, b: a + b, 'madd')
-        p = self._run_server_thread(server)
-
-        try:
-            proxy = callme.Proxy(server_id='fooserver',
-                                 amqp_host='localhost',
-                                 amqp_user='guest',
-                                 amqp_password='guest')
-
-            res = proxy.use_server(timeout=3).madd(1, 2)
-            self.assertEqual(res, 3)
-
-            res = proxy.use_server(timeout=1).madd(2, 2)
-            self.assertEqual(res, 4)
-
-            res = proxy.use_server(timeout=1).madd(2, 3)
-            self.assertEqual(res, 5)
-        finally:
-            server.stop()
-        p.join()
+        for i, result in results:
+            self.assertEqual(i, result)
 
     def test_timeout_call(self):
-        callme.Server(server_id='fooserver',
-                      amqp_host='localhost',
-                      amqp_user='guest',
-                      amqp_password='guest')
+        callme.Server(server_id='fooserver')
+        proxy = callme.Proxy(server_id='fooserver', timeout=1)
 
-        proxy = callme.Proxy(server_id='fooserver',
-                             amqp_host='localhost',
-                             amqp_user='guest',
-                             amqp_password='guest')
+        self.assertRaises(exc.RpcTimeout, proxy.madd, 1, 2)
 
-        self.assertRaises(exc.RpcTimeout,
-                          proxy.use_server(timeout=1).madd, 1, 2)
-
-    def test_remote_exception(self):
-        server = callme.Server(server_id='fooserver',
-                               amqp_host='localhost',
-                               amqp_user='guest',
-                               amqp_password='guest')
+    def test_remote_exception_call(self):
+        server = callme.Server(server_id='fooserver')
         server.register_function(lambda a, b: a + b, 'madd')
         p = self._run_server_thread(server)
 
         try:
-            proxy = callme.Proxy(server_id='fooserver',
-                                 amqp_host='localhost',
-                                 amqp_user='guest',
-                                 amqp_password='guest')
+            proxy = callme.Proxy(server_id='fooserver')
 
             self.assertRaises(exc.RemoteException, proxy.madd)
         finally:
             server.stop()
         p.join()
 
-    def test_multiple_server_calls(self):
+    def test_multiple_servers_calls(self):
 
         # start server A
-        server_a = callme.Server(server_id='server_a',
-                                 amqp_host='localhost',
-                                 amqp_user='guest',
-                                 amqp_password='guest')
+        server_a = callme.Server(server_id='server_a')
         server_a.register_function(lambda: 'a', 'f')
         p_a = self._run_server_thread(server_a)
 
         # start server B
-        server_b = callme.Server(server_id='server_b',
-                                 amqp_host='localhost',
-                                 amqp_user='guest',
-                                 amqp_password='guest')
+        server_b = callme.Server(server_id='server_b')
         server_b.register_function(lambda: 'b', 'f')
         p_b = self._run_server_thread(server_b)
 
         try:
-            proxy = callme.Proxy(server_id='server_a',
-                                 amqp_host='localhost',
-                                 amqp_user='guest',
-                                 amqp_password='guest')
+            proxy = callme.Proxy(server_id='server_a')
 
-            res = proxy.f()
-            self.assertEqual(res, 'a')
+            result = proxy.f()
+            self.assertEqual(result, 'a')
 
-            res = proxy.use_server('server_b').f()
-            self.assertEqual(res, 'b')
+            result = proxy.use_server('server_b').f()
+            self.assertEqual(result, 'b')
         finally:
             server_a.stop()
             server_b.stop()
