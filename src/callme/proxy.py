@@ -71,28 +71,28 @@ class Proxy(object):
 
         self._server_id = server_id
         self._timeout = timeout
-        self.is_received = False
-        self.connection = kombu.BrokerConnection(hostname=amqp_host,
-                                                 userid=amqp_user,
-                                                 password=amqp_password,
-                                                 virtual_host=amqp_vhost,
-                                                 port=amqp_port,
-                                                 ssl=ssl)
-        self.channel = self.connection.channel()
+        self._is_received = False
+        self._connection = kombu.BrokerConnection(hostname=amqp_host,
+                                                  userid=amqp_user,
+                                                  password=amqp_password,
+                                                  virtual_host=amqp_vhost,
+                                                  port=amqp_port,
+                                                  ssl=ssl)
+        self._channel = self._connection.channel()
         my_uuid = utils.gen_unique_id()
-        self.reply_id = "client_"+amqp_user+"_ex_"+my_uuid
-        self.corr_id = None
-        LOG.debug("Queue ID: {0}".format(self.reply_id))
-        src_exchange = kombu.Exchange(self.reply_id, durable=False,
+        self._reply_id = "client_"+amqp_user+"_ex_"+my_uuid
+        self._corr_id = None
+        LOG.debug("Queue ID: {0}".format(self._reply_id))
+        src_exchange = kombu.Exchange(self._reply_id, durable=False,
                                       auto_delete=True)
         src_queue = kombu.Queue("client_"+amqp_user+"_queue_"+my_uuid,
                                 durable=False, exchange=src_exchange,
                                 auto_delete=True)
 
         # must declare in advance so reply message isn't published before
-        src_queue(self.channel).declare()
+        src_queue(self._channel).declare()
 
-        consumer = kombu.Consumer(channel=self.channel, queues=src_queue,
+        consumer = kombu.Consumer(channel=self._channel, queues=src_queue,
                                   callbacks=[self._on_response])
         consumer.consume()
 
@@ -106,9 +106,9 @@ class Proxy(object):
             information
         """
 
-        if self.corr_id == message.properties['correlation_id']:
+        if self._corr_id == message.properties['correlation_id']:
             self.response = body
-            self.is_received = True
+            self._is_received = True
             message.ack()
 
     def use_server(self, server_id=None, timeout=None):
@@ -143,23 +143,23 @@ class Proxy(object):
 
         target_exchange = kombu.Exchange("server_"+self._server_id+"_ex",
                                          durable=False, auto_delete=True)
-        producer = kombu.Producer(channel=self.channel,
+        producer = kombu.Producer(channel=self._channel,
                                   exchange=target_exchange,
                                   auto_declare=False)
 
         rpc_req = dict(func_name=methodname, func_args=params)
-        self.corr_id = str(uuid.uuid4())
+        self._corr_id = str(uuid.uuid4())
         LOG.debug("RpcRequest build")
-        LOG.debug("Correlation id: {0}".format(self.corr_id))
-        producer.publish(rpc_req, reply_to=self.reply_id,
-                         correlation_id=self.corr_id)
+        LOG.debug("Correlation id: {0}".format(self._corr_id))
+        producer.publish(rpc_req, reply_to=self._reply_id,
+                         correlation_id=self._corr_id)
         LOG.debug("Producer published")
 
         self._wait_for_result()
 
         result = self.response['result']
         LOG.debug("Result: {!r}".format(result))
-        self.is_received = False
+        self._is_received = False
 
         if self.response['status'] == pr.ERROR:
             raise exc.RemoteException(result)
@@ -172,11 +172,11 @@ class Proxy(object):
         """
         elapsed = 0
         start_time = time.time()
-        while not self.is_received:
+        while not self._is_received:
             try:
                 LOG.debug("Draining events... timeout: {0}, elapsed: {1}"
                           .format(self._timeout, elapsed))
-                self.connection.drain_events(timeout=1)
+                self._connection.drain_events(timeout=1)
             except socket.timeout:
                 if self._timeout > 0:
                     elapsed = time.time() - start_time
