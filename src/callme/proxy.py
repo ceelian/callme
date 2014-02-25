@@ -35,13 +35,14 @@ import socket
 import time
 import uuid
 
+from callme import base
 from callme import exceptions as exc
 from callme import protocol as pr
 
 LOG = logging.getLogger(__name__)
 
 
-class Proxy(object):
+class Proxy(base.Base):
     """This Proxy class is used to handle the communication with the rpc
     server.
 
@@ -66,6 +67,8 @@ class Proxy(object):
                  ssl=False,
                  timeout=0):
 
+        super(Proxy, self).__init__(amqp_host, amqp_user, amqp_password,
+                                    amqp_vhost, amqp_port, ssl)
         self._uuid = str(uuid.uuid4())
         self._server_id = server_id
         self._timeout = timeout
@@ -75,27 +78,19 @@ class Proxy(object):
         self._exchange_name = 'client_' + amqp_user + '_ex_' + self._uuid
         self._queue_name = 'client_' + amqp_user + '_queue_' + self._uuid
 
-        # create connection
-        self._connection = kombu.BrokerConnection(hostname=amqp_host,
-                                                  userid=amqp_user,
-                                                  password=amqp_password,
-                                                  virtual_host=amqp_vhost,
-                                                  port=amqp_port,
-                                                  ssl=ssl)
-
         # create exchange
         exchange = self._make_exchange(self._exchange_name)
 
         # create queue
         queue = kombu.Queue(name=self._exchange_name,
                             exchange=exchange,
-                            channel=self._connection,
+                            channel=self._conn,
                             durable=False,
                             auto_delete=True)
         queue.declare()
 
         # create consumer
-        consumer = kombu.Consumer(channel=self._connection,
+        consumer = kombu.Consumer(channel=self._conn,
                                   queues=queue,
                                   callbacks=[self._on_response],
                                   accept=['pickle'])
@@ -118,13 +113,6 @@ class Proxy(object):
         if timeout is not None:
             self._timeout = timeout
         return self
-
-    @staticmethod
-    def _make_exchange(name):
-        """Make named exchange."""
-        return kombu.Exchange(name=name,
-                              durable=False,
-                              auto_delete=True)
 
     def _on_response(self, body, message):
         """This method is automatically called when a response is incoming and
@@ -156,7 +144,7 @@ class Proxy(object):
         LOG.debug("Publish request: {0}".format(request))
 
         # publish request
-        with kombu.producers[self._connection].acquire(block=True) as producer:
+        with kombu.producers[self._conn].acquire(block=True) as producer:
             exchange = self._make_exchange('server_' + self._server_id + '_ex')
             producer.publish(body=request,
                              serializer='pickle',
@@ -183,7 +171,7 @@ class Proxy(object):
         start_time = time.time()
         while not self._is_received:
             try:
-                self._connection.drain_events(timeout=1)
+                self._conn.drain_events(timeout=1)
             except socket.timeout:
                 if self._timeout > 0:
                     elapsed = time.time() - start_time

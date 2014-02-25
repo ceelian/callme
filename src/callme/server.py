@@ -42,13 +42,14 @@ if six.PY2:
 else:
     import queue
 
+from callme import base
 from callme import exceptions as exc
 from callme import protocol as pr
 
 LOG = logging.getLogger(__name__)
 
 
-class Server(object):
+class Server(base.Base):
     """This Server class is used to provide an RPC server.
 
     :keyword server_id: id of the server
@@ -72,29 +73,27 @@ class Server(object):
                  amqp_port=5672,
                  ssl=False,
                  threaded=False):
-        LOG.debug("Server ID: {0}".format(server_id))
+        super(Server, self).__init__(amqp_host, amqp_user, amqp_password,
+                                     amqp_vhost, amqp_port, ssl)
         self._server_id = server_id
         self._threaded = threaded
         self._do_run = True
         self._is_stopped = True
         self._func_dict = {}
         self._result_queue = queue.Queue()
-        target_exchange = kombu.Exchange("server_"+server_id+"_ex",
-                                         durable=False,
-                                         auto_delete=True)
+        self._exchange_name = 'server_' + server_id + '_ex'
+
+        # create exchange
+        target_exchange = self._make_exchange(self._exchange_name)
+
+        # create queue
         target_queue = kombu.Queue("server_"+server_id+"_queue",
                                    exchange=target_exchange,
                                    durable=False,
                                    auto_delete=True)
 
-        self._connection = kombu.BrokerConnection(hostname=amqp_host,
-                                                  userid=amqp_user,
-                                                  password=amqp_password,
-                                                  virtual_host=amqp_vhost,
-                                                  port=amqp_port,
-                                                  ssl=ssl)
         try:
-            self._connection.connect()
+            self._conn.connect()
         except IOError:
             LOG.critical("Connection Error: Probably AMQP User has"
                          " not enough permissions")
@@ -111,7 +110,7 @@ class Server(object):
         )
 
         # consume
-        self._consumer = kombu.Consumer(self._connection, target_queue,
+        self._consumer = kombu.Consumer(self._conn, target_queue,
                                         accept=['pickle'])
         if self._threaded:
             self._consumer.register_callback(self._on_request_threaded)
@@ -216,7 +215,7 @@ class Server(object):
             if self._threaded:
                 self._pub_thread.stop()
             self._consumer.cancel()
-            self._connection.close()
+            self._conn.close()
             self._publish_connection.close()
             self._is_stopped = True
         except Exception as e:
@@ -248,7 +247,7 @@ class Server(object):
         try:
             while self._do_run:
                 try:
-                    self._connection.drain_events(timeout=1)
+                    self._conn.drain_events(timeout=1)
                 except socket.timeout:
                     pass
                 except Exception as e:
