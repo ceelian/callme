@@ -77,11 +77,11 @@ class Server(base.Base):
         self._queue_name = 'server_' + server_id + '_queue'
 
         # create exchange
-        target_exchange = self._make_exchange(self._exchange_name)
+        exchange = self._make_exchange(self._exchange_name)
 
         # create queue
         queue = kombu.Queue(name=self._queue_name,
-                            exchange=target_exchange,
+                            exchange=exchange,
                             durable=False,
                             auto_delete=True)
 
@@ -112,8 +112,16 @@ class Server(base.Base):
         try:
             message.ack()
         except Exception:
-            LOG.exception("Failed to acknowledge the message.")
+            LOG.exception("Failed to acknowledge AMQP message.")
         else:
+            LOG.debug("AMQP message acknowledged.")
+
+            # check request type
+            if not isinstance(request, pr.RpcRequest):
+                LOG.warning("Request is not an `RpcRequest` instance.")
+                return
+
+            # process request
             if self._threaded:
                 p = threading.Thread(target=self._process_request,
                                      args=(request, message))
@@ -126,24 +134,17 @@ class Server(base.Base):
 
     def _process_request(self, request, message):
         """Process incoming request."""
-        if not isinstance(request, pr.RpcRequest):
-            LOG.debug("Request is not an `RpcRequest` instance!")
-            return
-
         LOG.debug("Call func on server {0}".format(self._server_id))
         corr_id = message.properties['correlation_id']
         reply_to = message.properties['reply_to']
         try:
             LOG.debug("Correlation id: {0}".format(corr_id))
             LOG.debug("Call func with args {!r}".format(request.func_args))
-
             result = self._func_dict[request.func_name](*request.func_args)
-
             LOG.debug("Result: {!r}".format(result))
-            LOG.debug("Build response")
             response = pr.RpcResponse(result)
         except Exception as e:
-            LOG.debug("Exception happened: {0}".format(e))
+            LOG.error("Exception happened: {0}".format(e))
             response = pr.RpcResponse(e)
 
         LOG.debug("Publish response: {0}".format(response))
@@ -160,8 +161,8 @@ class Server(base.Base):
             self._consumer.cancel()
             self._conn.close()
             self._is_stopped = True
-        except Exception as e:
-            LOG.error('Resource clean-up failed: {0}'.format(e))
+        except Exception:
+            LOG.exception("Resource clean-up failed.")
 
     def register_function(self, func, name=None):
         """Registers a function as rpc function so that is accessible from the
@@ -171,7 +172,7 @@ class Server(base.Base):
         :param name: the name with which the function is visible to the clients
         """
         if not callable(func):
-            raise ValueError("The '%s' is not callable." % func)
+            raise ValueError("The '{0}' is not callable.".format(func))
 
         self._func_dict[name if name is not None else func.__name__] = func
 
@@ -185,8 +186,8 @@ class Server(base.Base):
                     self._conn.drain_events(timeout=1)
                 except socket.timeout:
                     pass
-                except Exception as e:
-                    LOG.error("Draining events failed: {0}".format(e))
+                except Exception:
+                    LOG.exception("Draining events failed.")
                     return
                 except KeyboardInterrupt:
                     LOG.info("Server with id='{0}' stopped.".format(
@@ -197,8 +198,8 @@ class Server(base.Base):
 
     def stop(self):
         """Stop the server."""
-        LOG.debug("Stop server")
+        LOG.debug("Stopping the '{0}' server.".format(self._server_id))
         self._do_run = False
         while not self._is_stopped:
-            LOG.debug("Wait server stop...")
+            LOG.debug("Wait server to stop.")
             time.sleep(0.1)
