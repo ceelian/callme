@@ -236,7 +236,6 @@ class Server(object):
 
         while self._do_run:
             try:
-                LOG.debug("Draining events: {0}".format(self._do_run))
                 self._connection.drain_events(timeout=1)
             except socket.timeout:
                 pass

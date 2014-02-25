@@ -35,8 +35,6 @@ import socket
 import time
 import uuid
 
-from kombu import utils
-
 from callme import exceptions as exc
 from callme import protocol as pr
 
@@ -57,7 +55,6 @@ class Proxy(object):
     :keyword ssl: use SSL connection for the AMQP Broker
     :keyword timeout: default timeout for calls in seconds
     """
-    response = None
 
     def __init__(self,
                  server_id,
@@ -69,48 +66,40 @@ class Proxy(object):
                  ssl=False,
                  timeout=0):
 
+        self._uuid = str(uuid.uuid4())
         self._server_id = server_id
         self._timeout = timeout
         self._is_received = False
+        self._corr_id = None
+        self._response = None
+        self._exchange_name = 'client_' + amqp_user + '_ex_' + self._uuid
+        self._queue_name = 'client_' + amqp_user + '_queue_' + self._uuid
+
+        # create connection
         self._connection = kombu.BrokerConnection(hostname=amqp_host,
                                                   userid=amqp_user,
                                                   password=amqp_password,
                                                   virtual_host=amqp_vhost,
                                                   port=amqp_port,
                                                   ssl=ssl)
-        my_uuid = utils.gen_unique_id()
-        self._reply_id = "client_"+amqp_user+"_ex_"+my_uuid
-        self._corr_id = None
-        LOG.debug("Queue ID: {0}".format(self._reply_id))
-        src_exchange = kombu.Exchange(self._reply_id, durable=False,
-                                      auto_delete=True)
-        src_queue = kombu.Queue("client_"+amqp_user+"_queue_"+my_uuid,
-                                durable=False, exchange=src_exchange,
-                                auto_delete=True)
 
-        # must declare in advance so reply message isn't published before
-        src_queue(self._connection).declare()
+        # create exchange
+        exchange = self._make_exchange(self._exchange_name)
 
-        consumer = kombu.Consumer(channel=self._connection, queues=src_queue,
-                                  accept=['pickle'],
-                                  callbacks=[self._on_response])
+        # create queue
+        queue = kombu.Queue(name=self._exchange_name,
+                            exchange=exchange,
+                            channel=self._connection,
+                            durable=False,
+                            auto_delete=True)
+        queue.declare()
+
+        # create consumer
+        consumer = kombu.Consumer(channel=self._connection,
+                                  queues=queue,
+                                  callbacks=[self._on_response],
+                                  accept=['pickle'])
         consumer.consume()
-
-    def _on_response(self, body, message):
-        """This method is automatically called when a response is incoming and
-        decides if it is the message we are waiting for - the message with the
-        result.
-
-        :param body: the body of the amqp message already deserialized by kombu
-        :param message: the plain amqp kombu.message with additional
-            information
-        """
-
-        if self._corr_id == message.properties['correlation_id'] and \
-                isinstance(body, pr.RpcResponse):
-            self.response = body
-            self._is_received = True
-            message.ack()
 
     def use_server(self, server_id=None, timeout=None):
         """Use the specified server and set an optional timeout for the method
@@ -124,12 +113,34 @@ class Proxy(object):
         :keyword timeout: set or overrides the call timeout in seconds
         :rtype: return `self` to cascade further calls
         """
-
         if server_id is not None:
             self._server_id = server_id
         if timeout is not None:
             self._timeout = timeout
         return self
+
+    @staticmethod
+    def _make_exchange(name):
+        """Make named exchange."""
+        return kombu.Exchange(name=name,
+                              durable=False,
+                              auto_delete=True)
+
+    def _on_response(self, body, message):
+        """This method is automatically called when a response is incoming and
+        decides if it is the message we are waiting for - the message with the
+        result.
+
+        :param body: the body of the amqp message already deserialized by kombu
+        :param message: the plain amqp kombu.message with additional
+            information
+        """
+
+        if self._corr_id == message.properties['correlation_id'] and \
+                isinstance(body, pr.RpcResponse):
+            self._response = body
+            self._is_received = True
+            message.ack()
 
     def __request(self, func_name, func_args):
         """The remote-method-call execution function.
@@ -140,29 +151,27 @@ class Proxy(object):
         :type func_args: list of parameters
         :rtype: result of the method
         """
-        LOG.debug("Request: {!r}; Params: {!r}".format(func_name, func_args))
-
-        target_exchange = kombu.Exchange("server_"+self._server_id+"_ex",
-                                         durable=False, auto_delete=True)
-        producer = kombu.Producer(channel=self._connection,
-                                  exchange=target_exchange,
-                                  auto_declare=False)
-
-        rpc_req = pr.RpcRequest(func_name, func_args)
         self._corr_id = str(uuid.uuid4())
-        LOG.debug("Correlation id: {0}".format(self._corr_id))
-        producer.publish(rpc_req, serializer='pickle',
-                         reply_to=self._reply_id,
-                         correlation_id=self._corr_id)
-        LOG.debug("Producer published: %s" % rpc_req)
+        request = pr.RpcRequest(func_name, func_args)
+        LOG.debug("Publish request: {0}".format(request))
 
+        # publish request
+        with kombu.producers[self._connection].acquire(block=True) as producer:
+            exchange = self._make_exchange('server_' + self._server_id + '_ex')
+            producer.publish(body=request,
+                             serializer='pickle',
+                             exchange=exchange,
+                             reply_to=self._exchange_name,
+                             correlation_id=self._corr_id)
+
+        # start waiting for the response
         self._wait_for_result()
-
-        result = self.response.result
-        LOG.debug("Result: {!r}".format(result))
         self._is_received = False
 
-        if self.response.is_exception:
+        # handler response
+        result = self._response.result
+        LOG.debug("Result: {!r}".format(result))
+        if self._response.is_exception:
             raise result
         return result
 
@@ -171,7 +180,6 @@ class Proxy(object):
         a timeout occurred. If a timeout occurs a `socket.timeout` exception
         will be raised.
         """
-        elapsed = 0
         start_time = time.time()
         while not self._is_received:
             try:
