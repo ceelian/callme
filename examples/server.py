@@ -30,11 +30,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import callme
+import logging
+logging.basicConfig(level=logging.INFO)
 
 
 def add(a, b):
     return a + b
 
-server = callme.Server(server_id='fooserver', amqp_host='localhost')
-server.register_function(add, 'add')
-server.start()
+
+if __name__ == "__main__":
+    server = callme.Server(server_id='fooserver', amqp_host='localhost')
+    server.register_function(add, 'add')
+    server.start()

@@ -30,7 +30,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import callme
+import logging
+logging.basicConfig(level=logging.INFO)
 
-proxy = callme.Proxy(server_id='fooserver', amqp_host='localhost')
 
-print(proxy.add(1, 1))
+if __name__ == "__main__":
+    proxy = callme.Proxy(server_id='fooserver',
+                         amqp_host='localhost')
+    print(proxy.add(1, 1))

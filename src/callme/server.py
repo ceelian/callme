@@ -122,29 +122,28 @@ class Server(object):
 
         LOG.debug("Initialization done")
 
-    def _on_request(self, body, message):
+    def _on_request(self, request, message):
         """This method is automatically called when a request is incoming. It
         processes the incoming rpc calls in a serial manner (no multi-
         threading).
 
-        :param body: the body of the amqp message already deserialized by kombu
+        :param request: the body of the amqp message already deserialized
+            by kombu
         :param message: the plain amqp kombu.message with additional
             information
         """
-        LOG.debug("Got request")
-        rpc_req = body
-
-        if not isinstance(rpc_req, pr.RpcRequest):
-            LOG.debug("Request is not an RpcRequest instance")
+        LOG.info("Got request: {0}".format(request))
+        if not isinstance(request, pr.RpcRequest):
+            LOG.debug("Request is not an `RpcRequest` instance!")
             return
 
         LOG.debug("Call func on server {0}".format(self._server_id))
         try:
             LOG.debug("Correlation id: {0}".format(
                       message.properties['correlation_id']))
-            LOG.debug("Call func with args {!r}".format(rpc_req.func_args))
+            LOG.debug("Call func with args {!r}".format(request.func_args))
 
-            result = self._func_dict[rpc_req.func_name](*rpc_req.func_args)
+            result = self._func_dict[request.func_name](*request.func_args)
 
             LOG.debug("Result: {!r}".format(result))
             LOG.debug("Build response")
@@ -167,21 +166,20 @@ class Server(object):
 
         LOG.debug("Acknowledge")
 
-    def _on_request_threaded(self, body, message):
+    def _on_request_threaded(self, request, message):
         """This method is automatically called when a request is incoming and
         `threaded` set to `True`. It processes the incoming rpc calls in
         a parallel manner (one thread for each request). A separate Publisher
         thread is used to send back the results.
 
-        :param body: the body of the amqp message already deserialized by kombu
+        :param request: the body of the amqp message already deserialized
+            by kombu
         :param message: the plain amqp kombu.message with additional
             information
         """
-        LOG.debug("Got request")
-        rpc_req = body
-
-        if not isinstance(rpc_req, pr.RpcRequest):
-            LOG.debug("Request is not an RpcRequest instance")
+        LOG.info("Got request: {0}".format(request))
+        if not isinstance(request, pr.RpcRequest):
+            LOG.debug("Request is not an `RpcRequest` instance!")
             return
 
         message.ack()
@@ -192,9 +190,9 @@ class Server(object):
             try:
                 LOG.debug("Correlation id: {0}".format(
                           message.properties['correlation_id']))
-                LOG.debug("Call func with args {!r}".format(rpc_req.func_args))
+                LOG.debug("Call func with args {!r}".format(request.func_args))
 
-                result = self._func_dict[rpc_req.func_name](*rpc_req.func_args)
+                result = self._func_dict[request.func_name](*request.func_args)
 
                 LOG.debug("Result: {!r}".format(result))
                 LOG.debug("Build response")
@@ -212,6 +210,18 @@ class Server(object):
                              args=(message, self._result_queue))
         p.start()
 
+    def _cleanup(self):
+        """Clean-up all resources."""
+        try:
+            if self._threaded:
+                self._pub_thread.stop()
+            self._consumer.cancel()
+            self._connection.close()
+            self._publish_connection.close()
+            self._is_stopped = True
+        except Exception as e:
+            LOG.error('Resource clean-up failed: {0}'.format(e))
+
     def register_function(self, func, name=None):
         """Registers a function as rpc function so that is accessible from the
         proxy.
@@ -225,7 +235,7 @@ class Server(object):
         self._func_dict[name if name is not None else func.__name__] = func
 
     def start(self):
-        """Starts the server. If `threaded` is `True` also starts the Publisher
+        """Start the server. If `threaded` is `True` also starts the Publisher
         thread.
         """
         self._is_stopped = False
@@ -234,32 +244,25 @@ class Server(object):
                                          self._publish_connection)
             self._pub_thread.start()
 
-        while self._do_run:
-            try:
-                self._connection.drain_events(timeout=1)
-            except socket.timeout:
-                pass
-            except Exception as e:
-                LOG.debug("Interrupt exception:{0}".format(e))
-                if self._threaded:
-                    self._pub_thread.stop()
-                self._consumer.cancel()
-                self._connection.close()
-                self._publish_connection.close()
-                self._is_stopped = True
-                return
-
-        if self._threaded:
-            self._pub_thread.stop()
-        LOG.debug("Normal exit")
-        self._consumer.cancel()
-        self._connection.close()
-        self._publish_connection.close()
-        LOG.debug("Everything closed")
-        self._is_stopped = True
+        LOG.info("Server with id='{0}' started.".format(self._server_id))
+        try:
+            while self._do_run:
+                try:
+                    self._connection.drain_events(timeout=1)
+                except socket.timeout:
+                    pass
+                except Exception as e:
+                    LOG.error("Draining events failed: {0}".format(e))
+                    return
+                except KeyboardInterrupt:
+                    LOG.info("Server with id='{0}' stopped.".format(
+                        self._server_id))
+                    return
+        finally:
+            self._cleanup()
 
     def stop(self):
-        """Stops the server."""
+        """Stop the server."""
         LOG.debug("Stop server")
         self._do_run = False
         while not self._is_stopped:
@@ -301,7 +304,7 @@ class Publisher(threading.Thread):
                 pass
 
     def stop(self):
-        """Stops the Publisher thread."""
+        """Stop the Publisher thread."""
         self.stop_it = True
         self.join()
 
