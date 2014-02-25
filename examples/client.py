@@ -35,6 +35,5 @@ logging.basicConfig(level=logging.INFO)
 
 
 if __name__ == "__main__":
-    proxy = callme.Proxy(server_id='fooserver',
-                         amqp_host='localhost')
+    proxy = callme.Proxy(server_id='fooserver')
     print(proxy.add(1, 1))

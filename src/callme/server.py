@@ -35,13 +35,6 @@ import socket
 import threading
 import time
 
-import six
-
-if six.PY2:
-    import Queue as queue
-else:
-    import queue
-
 from callme import base
 from callme import exceptions as exc
 from callme import protocol as pr
@@ -80,17 +73,17 @@ class Server(base.Base):
         self._do_run = True
         self._is_stopped = True
         self._func_dict = {}
-        self._result_queue = queue.Queue()
         self._exchange_name = 'server_' + server_id + '_ex'
+        self._queue_name = 'server_' + server_id + '_queue'
 
         # create exchange
         target_exchange = self._make_exchange(self._exchange_name)
 
         # create queue
-        target_queue = kombu.Queue("server_"+server_id+"_queue",
-                                   exchange=target_exchange,
-                                   durable=False,
-                                   auto_delete=True)
+        queue = kombu.Queue(name=self._queue_name,
+                            exchange=target_exchange,
+                            durable=False,
+                            auto_delete=True)
 
         try:
             self._conn.connect()
@@ -100,31 +93,15 @@ class Server(base.Base):
             raise exc.ConnectionError("Connection Error: Probably AMQP User "
                                       "has not enough permissions")
 
-        self._publish_connection = kombu.BrokerConnection(
-            hostname=amqp_host,
-            userid=amqp_user,
-            password=amqp_password,
-            virtual_host=amqp_vhost,
-            port=amqp_port,
-            ssl=ssl
-        )
-
-        # consume
-        self._consumer = kombu.Consumer(self._conn, target_queue,
+        # create consumer
+        self._consumer = kombu.Consumer(self._conn,
+                                        queues=queue,
+                                        callbacks=[self._on_request],
                                         accept=['pickle'])
-        if self._threaded:
-            self._consumer.register_callback(self._on_request_threaded)
-        else:
-            self._consumer.register_callback(self._on_request)
         self._consumer.consume()
-        self._pub_thread = None
-
-        LOG.debug("Initialization done")
 
     def _on_request(self, request, message):
-        """This method is automatically called when a request is incoming. It
-        processes the incoming rpc calls in a serial manner (no multi-
-        threading).
+        """This method is automatically called when a request is incoming.
 
         :param request: the body of the amqp message already deserialized
             by kombu
@@ -132,91 +109,56 @@ class Server(base.Base):
             information
         """
         LOG.info("Got request: {0}".format(request))
+        try:
+            message.ack()
+        except Exception:
+            LOG.exception("Failed to acknowledge the message.")
+        else:
+            if self._threaded:
+                p = threading.Thread(target=self._process_request,
+                                     args=(request, message))
+                p.daemon = True
+                p.start()
+                LOG.debug("New thread spawned to process the {0} request."
+                          .format(request))
+            else:
+                self._process_request(request, message)
+
+    def _process_request(self, request, message):
+        """Process incoming request."""
         if not isinstance(request, pr.RpcRequest):
             LOG.debug("Request is not an `RpcRequest` instance!")
             return
 
         LOG.debug("Call func on server {0}".format(self._server_id))
+        corr_id = message.properties['correlation_id']
+        reply_to = message.properties['reply_to']
         try:
-            LOG.debug("Correlation id: {0}".format(
-                      message.properties['correlation_id']))
+            LOG.debug("Correlation id: {0}".format(corr_id))
             LOG.debug("Call func with args {!r}".format(request.func_args))
 
             result = self._func_dict[request.func_name](*request.func_args)
 
             LOG.debug("Result: {!r}".format(result))
             LOG.debug("Build response")
-            rpc_resp = pr.RpcResponse(result)
+            response = pr.RpcResponse(result)
         except Exception as e:
             LOG.debug("Exception happened: {0}".format(e))
-            rpc_resp = pr.RpcResponse(e)
+            response = pr.RpcResponse(e)
 
-        message.ack()
-
-        LOG.debug("Publish response")
-        # producer
-        src_exchange = kombu.Exchange(message.properties['reply_to'],
-                                      durable=False, auto_delete=True)
-        producer = kombu.Producer(self._publish_connection, src_exchange,
-                                  auto_declare=False)
-
-        producer.publish(rpc_resp, serializer='pickle',
-                         correlation_id=message.properties['correlation_id'])
-
-        LOG.debug("Acknowledge")
-
-    def _on_request_threaded(self, request, message):
-        """This method is automatically called when a request is incoming and
-        `threaded` set to `True`. It processes the incoming rpc calls in
-        a parallel manner (one thread for each request). A separate Publisher
-        thread is used to send back the results.
-
-        :param request: the body of the amqp message already deserialized
-            by kombu
-        :param message: the plain amqp kombu.message with additional
-            information
-        """
-        LOG.info("Got request: {0}".format(request))
-        if not isinstance(request, pr.RpcRequest):
-            LOG.debug("Request is not an `RpcRequest` instance!")
-            return
-
-        message.ack()
-        LOG.debug("Acknowledge")
-
-        def exec_func(message, result_queue):
-            LOG.debug("Call func on server{0}".format(self._server_id))
-            try:
-                LOG.debug("Correlation id: {0}".format(
-                          message.properties['correlation_id']))
-                LOG.debug("Call func with args {!r}".format(request.func_args))
-
-                result = self._func_dict[request.func_name](*request.func_args)
-
-                LOG.debug("Result: {!r}".format(result))
-                LOG.debug("Build response")
-                rpc_resp = pr.RpcResponse(result)
-            except Exception as e:
-                LOG.debug("Exception happened: {0}".format(e))
-                rpc_resp = pr.RpcResponse(e)
-
-            result_queue.put(ResultSet(rpc_resp,
-                                       message.properties['correlation_id'],
-                                       message.properties['reply_to']))
-
-        p = threading.Thread(target=exec_func,
-                             name=message.properties['correlation_id'],
-                             args=(message, self._result_queue))
-        p.start()
+        LOG.debug("Publish response: {0}".format(response))
+        with kombu.producers[self._conn].acquire(block=True) as producer:
+            exchange = self._make_exchange(reply_to)
+            producer.publish(body=response,
+                             serializer='pickle',
+                             exchange=exchange,
+                             correlation_id=corr_id)
 
     def _cleanup(self):
         """Clean-up all resources."""
         try:
-            if self._threaded:
-                self._pub_thread.stop()
             self._consumer.cancel()
             self._conn.close()
-            self._publish_connection.close()
             self._is_stopped = True
         except Exception as e:
             LOG.error('Resource clean-up failed: {0}'.format(e))
@@ -234,16 +176,9 @@ class Server(base.Base):
         self._func_dict[name if name is not None else func.__name__] = func
 
     def start(self):
-        """Start the server. If `threaded` is `True` also starts the Publisher
-        thread.
-        """
-        self._is_stopped = False
-        if self._threaded:
-            self._pub_thread = Publisher(self._result_queue,
-                                         self._publish_connection)
-            self._pub_thread.start()
-
+        """Start the server."""
         LOG.info("Server with id='{0}' started.".format(self._server_id))
+        self._is_stopped = False
         try:
             while self._do_run:
                 try:
@@ -267,58 +202,3 @@ class Server(base.Base):
         while not self._is_stopped:
             LOG.debug("Wait server stop...")
             time.sleep(0.1)
-
-
-class Publisher(threading.Thread):
-    """This class is a thread class and used internally for sending back
-    results to the client.
-
-    :param result_queue: a Queue.Queue type queue which is thread-safe and
-        holds the results which should be sent back. Item in the queue must
-        be of type :class:`ResultSet`.
-    :param channel: a kombu.channel
-    """
-
-    def __init__(self, result_queue, channel):
-        threading.Thread.__init__(self)
-        self.result_queue = result_queue
-        self.channel = channel
-        self.stop_it = False
-
-    def run(self):
-        while not self.stop_it:
-            try:
-                result_set = self.result_queue.get(block=True, timeout=1)
-                LOG.debug("Publish response: {!r}".format(result_set))
-
-                src_exchange = kombu.Exchange(result_set.reply_to,
-                                              durable=False, auto_delete=True)
-                producer = kombu.Producer(self.channel, src_exchange,
-                                          auto_declare=False)
-
-                producer.publish(result_set.rpc_resp, serializer='pickle',
-                                 correlation_id=result_set.correlation_id)
-
-            except queue.Empty:
-                pass
-
-    def stop(self):
-        """Stop the Publisher thread."""
-        self.stop_it = True
-        self.join()
-
-
-class ResultSet(object):
-    """This class is used as type for the items in the result_queue when used
-    in threaded mode. It stores all information needed to send back the result
-    to the right client.
-
-    :param rpc_resp: the RPC Response object of type :class:`RpcResponse`
-    :param correlation_id: the correlation_id of the amqp message
-    :param reply_to: the reply_to field of the amqp message
-    """
-
-    def __init__(self, rpc_resp, correlation_id, reply_to):
-        self.rpc_resp = rpc_resp
-        self.correlation_id = correlation_id
-        self.reply_to = reply_to

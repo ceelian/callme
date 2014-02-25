@@ -39,6 +39,6 @@ def add(a, b):
 
 
 if __name__ == "__main__":
-    server = callme.Server(server_id='fooserver', amqp_host='localhost')
+    server = callme.Server(server_id='fooserver')
     server.register_function(add, 'add')
     server.start()
