@@ -75,19 +75,14 @@ class Proxy(base.Base):
         self._is_received = False
         self._corr_id = None
         self._response = None
-        self._exchange_name = 'client_' + amqp_user + '_ex_' + self._uuid
-        self._queue_name = 'client_' + amqp_user + '_queue_' + self._uuid
+        self._exchange_name = 'client_{0}_ex_{1}'.format(amqp_user, self._uuid)
+        self._queue_name = 'client_{0}_queue_{1}'.format(amqp_user, self._uuid)
 
         # create exchange
         exchange = self._make_exchange(self._exchange_name)
 
         # create queue
-        queue = kombu.Queue(name=self._exchange_name,
-                            exchange=exchange,
-                            channel=self._conn,
-                            durable=False,
-                            auto_delete=True)
-        queue.declare()
+        queue = self._make_queue(self._queue_name, exchange)
 
         # create consumer
         consumer = kombu.Consumer(channel=self._conn,
@@ -114,21 +109,36 @@ class Proxy(base.Base):
             self._timeout = timeout
         return self
 
-    def _on_response(self, body, message):
+    def _on_response(self, response, message):
         """This method is automatically called when a response is incoming and
         decides if it is the message we are waiting for - the message with the
         result.
 
-        :param body: the body of the amqp message already deserialized by kombu
+        :param response: the body of the amqp message already deserialized
+            by kombu
         :param message: the plain amqp kombu.message with additional
             information
         """
-
-        if self._corr_id == message.properties['correlation_id'] and \
-                isinstance(body, pr.RpcResponse):
-            self._response = body
-            self._is_received = True
+        LOG.debug("Got response: {0}".format(response))
+        try:
             message.ack()
+        except Exception:
+            LOG.exception("Failed to acknowledge AMQP message.")
+        else:
+            LOG.debug("AMQP message acknowledged.")
+
+            # check response type
+            if not isinstance(response, pr.RpcResponse):
+                LOG.warning("Response is not a `RpcResponse` instance.")
+                return
+
+            # process response
+            try:
+                if self._corr_id == message.properties['correlation_id']:
+                    self._response = response
+                    self._is_received = True
+            except KeyError:
+                LOG.error("Message has no `correlation_id` property.")
 
     def __request(self, func_name, func_args):
         """The remote-method-call execution function.
@@ -145,7 +155,8 @@ class Proxy(base.Base):
 
         # publish request
         with kombu.producers[self._conn].acquire(block=True) as producer:
-            exchange = self._make_exchange('server_' + self._server_id + '_ex')
+            exchange_name = 'server_{0}_ex'.format(self._server_id)
+            exchange = self._make_exchange(exchange_name)
             producer.publish(body=request,
                              serializer='pickle',
                              exchange=exchange,
@@ -165,7 +176,7 @@ class Proxy(base.Base):
 
     def _wait_for_result(self):
         """Waits for the result from the server, checks every second if
-        a timeout occurred. If a timeout occurs a `socket.timeout` exception
+        a timeout occurred. If a timeout occurred - the `RpcTimeout` exception
         will be raised.
         """
         start_time = time.time()

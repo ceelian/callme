@@ -87,7 +87,7 @@ class Server(base.Base):
         :param message: the plain amqp kombu.message with additional
             information
         """
-        LOG.info("Got request: {0}".format(request))
+        LOG.debug("Got request: {0}".format(request))
         try:
             message.ack()
         except Exception:
@@ -97,7 +97,7 @@ class Server(base.Base):
 
             # check request type
             if not isinstance(request, pr.RpcRequest):
-                LOG.warning("Request is not an `RpcRequest` instance.")
+                LOG.warning("Request is not a `RpcRequest` instance.")
                 return
 
             # process request
