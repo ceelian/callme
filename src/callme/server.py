@@ -73,32 +73,6 @@ class Server(base.Base):
         self._running = threading.Event()
         self._is_stopped = True
         self._func_dict = {}
-        self._exchange_name = 'server_' + server_id + '_ex'
-        self._queue_name = 'server_' + server_id + '_queue'
-
-        # create exchange
-        exchange = self._make_exchange(self._exchange_name)
-
-        # create queue
-        queue = kombu.Queue(name=self._queue_name,
-                            exchange=exchange,
-                            durable=False,
-                            auto_delete=True)
-
-        try:
-            self._conn.connect()
-        except IOError:
-            LOG.critical("Connection Error: Probably AMQP User has"
-                         " not enough permissions")
-            raise exc.ConnectionError("Connection Error: Probably AMQP User "
-                                      "has not enough permissions")
-
-        # create consumer
-        self._consumer = kombu.Consumer(self._conn,
-                                        queues=queue,
-                                        callbacks=[self._on_request],
-                                        accept=['pickle'])
-        self._consumer.consume()
 
     @property
     def is_running(self):
@@ -160,15 +134,6 @@ class Server(base.Base):
                              exchange=exchange,
                              correlation_id=corr_id)
 
-    def _cleanup(self):
-        """Clean-up all resources."""
-        try:
-            self._consumer.cancel()
-            self._conn.close()
-            self._is_stopped = True
-        except Exception:
-            LOG.exception("Resource clean-up failed.")
-
     def register_function(self, func, name=None):
         """Registers a function as rpc function so that is accessible from the
         proxy.
@@ -184,23 +149,30 @@ class Server(base.Base):
     def start(self):
         """Start the server."""
         LOG.info("Server with id='{0}' started.".format(self._server_id))
-        self._is_stopped = False
         try:
-            self._running.set()
-            while self.is_running:
-                try:
-                    self._conn.drain_events(timeout=1)
-                except socket.timeout:
-                    pass
-                except Exception:
-                    LOG.exception("Draining events failed.")
-                    return
-                except KeyboardInterrupt:
-                    LOG.info("Server with id='{0}' stopped.".format(
-                        self._server_id))
-                    return
-        finally:
-            self._cleanup()
+            with kombu.connections[self._conn].acquire(block=True) as conn:
+                exchange = self._make_exchange(
+                    'server_{0}_ex'.format(self._server_id))
+                queue = self._make_queue(
+                    'server_{0}_queue'.format(self._server_id), exchange)
+                with conn.Consumer(queues=queue,
+                                   callbacks=[self._on_request],
+                                   accept=['pickle']):
+                    self._running.set()
+                    while self.is_running:
+                        try:
+                            conn.drain_events(timeout=1)
+                        except socket.timeout:
+                            pass
+                        except Exception:
+                            LOG.exception("Draining events failed.")
+                            return
+                        except KeyboardInterrupt:
+                            LOG.info("Server with id='{0}' stopped.".format(
+                                self._server_id))
+                            return
+        except socket.error:
+            raise exc.ConnectionError("Broker connection failed")
 
     def wait(self):
         """Wait until server is started."""

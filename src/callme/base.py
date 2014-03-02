@@ -51,3 +51,11 @@ class Base(object):
         return kombu.Exchange(name=name,
                               durable=False,
                               auto_delete=True)
+
+    @staticmethod
+    def _make_queue(name, exchange):
+        """Make named queue for a given exchange."""
+        return kombu.Queue(name=name,
+                           exchange=exchange,
+                           durable=False,
+                           auto_delete=True)
