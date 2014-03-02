@@ -44,6 +44,7 @@ class ActionsTestCase(test.TestCase):
         t = threading.Thread(target=server.start)
         t.daemon = True
         t.start()
+        server.wait()
         return t
 
     def test_method_single_call(self):

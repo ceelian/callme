@@ -70,7 +70,7 @@ class Server(base.Base):
                                      amqp_vhost, amqp_port, ssl)
         self._server_id = server_id
         self._threaded = threaded
-        self._do_run = True
+        self._running = threading.Event()
         self._is_stopped = True
         self._func_dict = {}
         self._exchange_name = 'server_' + server_id + '_ex'
@@ -99,6 +99,11 @@ class Server(base.Base):
                                         callbacks=[self._on_request],
                                         accept=['pickle'])
         self._consumer.consume()
+
+    @property
+    def is_running(self):
+        """Return whether server is running."""
+        return self._running.is_set()
 
     def _on_request(self, request, message):
         """This method is automatically called when a request is incoming.
@@ -181,7 +186,8 @@ class Server(base.Base):
         LOG.info("Server with id='{0}' started.".format(self._server_id))
         self._is_stopped = False
         try:
-            while self._do_run:
+            self._running.set()
+            while self.is_running:
                 try:
                     self._conn.drain_events(timeout=1)
                 except socket.timeout:
@@ -196,10 +202,14 @@ class Server(base.Base):
         finally:
             self._cleanup()
 
+    def wait(self):
+        """Wait until server is started."""
+        self._running.wait()
+
     def stop(self):
         """Stop the server."""
         LOG.debug("Stopping the '{0}' server.".format(self._server_id))
-        self._do_run = False
+        self._running.clear()
         while not self._is_stopped:
             LOG.debug("Wait server to stop.")
             time.sleep(0.1)
