@@ -33,7 +33,6 @@ import kombu
 import logging
 import socket
 import threading
-import time
 
 from callme import base
 from callme import exceptions as exc
@@ -112,18 +111,35 @@ class Server(base.Base):
 
     def _process_request(self, request, message):
         """Process incoming request."""
-        LOG.debug("Call func on server {0}".format(self._server_id))
-        corr_id = message.properties['correlation_id']
-        reply_to = message.properties['reply_to']
+        LOG.debug("Start processing request {0}.".format(request))
+        # get the correlation_id message property
         try:
-            LOG.debug("Correlation id: {0}".format(corr_id))
-            LOG.debug("Call func with args {!r}".format(request.func_args))
+            correlation_id = message.properties['correlation_id']
+        except KeyError:
+            LOG.error("The 'correlation_id' message property is missing.")
+            return
+        else:
+            LOG.debug("Correlation id: {0}".format(correlation_id))
+
+        # get the reply_to message property
+        try:
+            reply_to = message.properties['reply_to']
+        except KeyError:
+            LOG.error("The 'reply_to' message property is missing.")
+            return
+        else:
+            LOG.debug("Reply to: {0}".format(reply_to))
+
+        # execute function
+        try:
+            LOG.debug("Call function with args {!r}".format(request.func_args))
             result = self._func_dict[request.func_name](*request.func_args)
-            LOG.debug("Result: {!r}".format(result))
-            response = pr.RpcResponse(result)
         except Exception as e:
             LOG.error("Exception happened: {0}".format(e))
             response = pr.RpcResponse(e)
+        else:
+            LOG.debug("Result: {!r}".format(result))
+            response = pr.RpcResponse(result)
 
         LOG.debug("Publish response: {0}".format(response))
         with kombu.producers[self._conn].acquire(block=True) as producer:
@@ -131,7 +147,7 @@ class Server(base.Base):
             producer.publish(body=response,
                              serializer='pickle',
                              exchange=exchange,
-                             correlation_id=corr_id)
+                             correlation_id=correlation_id)
 
     def register_function(self, func, name=None):
         """Registers a function as rpc function so that is accessible from the
