@@ -210,13 +210,13 @@ class _Method:
     # some magic to bind an XML-RPC method to an RPC server.
     # supports "nested" methods (e.g. examples.getStateName)
     def __init__(self, send, name):
-        self.__send = send
-        self.__name = name
+        self._send = send
+        self._name = name
 
     def __getattr__(self, name):
-        return _Method(self.__send, "%s.%s" % (self.__name, name))
+        return _Method(self._send, "{0}.{1}".format(self._name, name))
 
-    def __call__(self, * args):
-        return self.__send(self.__name, args)
+    def __call__(self, *args):
+        return self._send(self._name, args)
 
 #===========================================================================
