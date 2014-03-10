@@ -71,7 +71,6 @@ class Server(base.Base):
         self._server_id = server_id
         self._threaded = threaded
         self._running = threading.Event()
-        self._is_stopped = True
         self._func_dict = {}
 
     @property
@@ -182,6 +181,3 @@ class Server(base.Base):
         """Stop the server."""
         LOG.debug("Stopping the '{0}' server.".format(self._server_id))
         self._running.clear()
-        while not self._is_stopped:
-            LOG.debug("Wait server to stop.")
-            time.sleep(0.1)
