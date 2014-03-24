@@ -51,15 +51,15 @@ class TestProxy(test.MockTestCase):
     def test_use_server_default(self):
         s = proxy.Proxy('fooserver')
         self.assertEqual(s._server_id, 'fooserver')
-        self.assertEqual(s._timeout, 0)
+        self.assertEqual(s._timeout, 60)
         s.use_server()
         self.assertEqual(s._server_id, 'fooserver')
-        self.assertEqual(s._timeout, 0)
+        self.assertEqual(s._timeout, 60)
 
     def test_use_server_custom(self):
         s = proxy.Proxy('fooserver')
         self.assertEqual(s._server_id, 'fooserver')
-        self.assertEqual(s._timeout, 0)
+        self.assertEqual(s._timeout, 60)
         s.use_server('test_server', 30)
         self.assertEqual(s._server_id, 'test_server')
         self.assertEqual(s._timeout, 30)

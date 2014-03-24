@@ -41,6 +41,8 @@ from callme import protocol as pr
 
 LOG = logging.getLogger(__name__)
 
+REQUEST_TIMEOUT = 60
+
 
 class Proxy(base.Base):
     """This Proxy class is used to handle the communication with the rpc
@@ -65,7 +67,7 @@ class Proxy(base.Base):
                  amqp_vhost='/',
                  amqp_port=5672,
                  ssl=False,
-                 timeout=0):
+                 timeout=REQUEST_TIMEOUT):
 
         super(Proxy, self).__init__(amqp_host, amqp_user, amqp_password,
                                     amqp_vhost, amqp_port, ssl)
@@ -155,13 +157,16 @@ class Proxy(base.Base):
 
         # publish request
         with kombu.producers[self._conn].acquire(block=True) as producer:
-            exchange_name = 'server_{0}_ex'.format(self._server_id)
-            exchange = self._make_exchange(exchange_name)
+            exchange = self._make_exchange(
+                'server_{0}_ex'.format(self._server_id))
+            queue = self._make_queue(
+                'server_{0}_queue'.format(self._server_id), exchange)
             producer.publish(body=request,
                              serializer='pickle',
                              exchange=exchange,
                              reply_to=self._exchange_name,
-                             correlation_id=self._corr_id)
+                             correlation_id=self._corr_id,
+                             declare=[queue])
 
         # start waiting for the response
         self._wait_for_result()
@@ -185,8 +190,7 @@ class Proxy(base.Base):
                 self._conn.drain_events(timeout=1)
             except socket.timeout:
                 if self._timeout > 0:
-                    elapsed = time.time() - start_time
-                    if elapsed > self._timeout:
+                    if time.time() - start_time > self._timeout:
                         raise exc.RpcTimeout("RPC Request timeout")
 
     def __getattr__(self, name):

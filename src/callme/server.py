@@ -147,7 +147,8 @@ class Server(base.Base):
             producer.publish(body=response,
                              serializer='pickle',
                              exchange=exchange,
-                             correlation_id=correlation_id)
+                             correlation_id=correlation_id,
+                             declare=[exchange])
 
     def register_function(self, func, name=None):
         """Registers a function as rpc function so that is accessible from the
