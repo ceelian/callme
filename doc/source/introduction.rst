@@ -45,7 +45,7 @@ result::
 There are optional parameters to fit different needs which are explained in depth
 in the Server and Proxy Documentation.
 
-Examples are provided in the *examples* directory in the package
+Examples are provided in the *examples* directory in the package.
 
 Multithreading
 --------------
@@ -70,7 +70,7 @@ recommended using separate vhost only for callme communication (if you
 have other amqp messages on your system on the same broker).  
 
 For a more in depth explanation why these permissions look how they are see 
-`Exchange Design`
+``Exchange Design``.
 
 
 Limit Server Permissions
@@ -84,10 +84,9 @@ user called *carl* on the rabbitmq broker.
 
 Limit Client (Proxy) Permissions
 ++++++++++++++++++++++++++++++++
-To limit the Proxy to the server with the server_id *fooserver*
-(no other server can then be reached with this 
-user) we use these permissions. Assumption the RPC proxy has its own
-user called *olivia* on the rabbitmq broker.
+To limit the Proxy to the server with the server_id *fooserver* (no other
+server can then be reached with this user) we use these permissions. Assumption
+the RPC proxy has its own user called *olivia* on the rabbitmq broker.
 
 ``rabbitmqctl set_permissions olivia "client_olivia_.*" "client_olivia_.*|server_fooserver_ex" "client_olivia_.*"``
 
@@ -104,9 +103,9 @@ To give the client access to all RPC servers set the permission as follows:
 Architecture
 ------------
 Callme uses kombu for communication between Proxy and Server. Callme transfers
-instances of the `RpcResponse` and `RpcRequest` to execute remote
-procedure calls (RPC). The instances of these classes are pickled by kombu and
-then transferred to the server or proxy.
+instances of the ``RpcResponse`` and ``RpcRequest`` to execute remote procedure
+calls (RPC). The instances of these classes are pickled by kombu and then
+transferred to the server or proxy.
 
 
 Exchange Design
@@ -158,16 +157,16 @@ and *callme.server*. Both are mostly used for debugging at the moment.
 
 Bug Tracker
 -----------
-If you find any issues please report them on https://github.com/ceelian/callme/issues
+If you find any issues please report them on https://github.com/ceelian/callme/issues.
 
 
 Getting callme
 --------------
-You can get the python package on the `Python Package Index`_
+You can get the python package on the `Python Package Index`_.
 
 .. _`Python Package Index`: http://pypi.python.org/pypi/callme
 
-The git repository is available at `github.com callme`_
+The git repository is available at `github.com callme`_.
 
 .. _`github.com callme`: https://github.com/ceelian/callme
 
@@ -193,13 +192,13 @@ following::
 
 Supported by
 ------------
-Wingware - The Python IDE (http://wingware.com)
+Wingware - The Python IDE (http://wingware.com).
 
 
 Contributing
 ------------
 We are welcome everyone who wants to contribute to ``callme``.
-Development of callme happens at  https://github.com/ceelian/callme
+Development of callme happens at https://github.com/ceelian/callme.
 
 
 Contributors (chronological order)
