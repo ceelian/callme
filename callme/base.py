@@ -46,16 +46,16 @@ class Base(object):
                                             ssl=ssl)
 
     @staticmethod
-    def _make_exchange(name):
+    def _make_exchange(name, durable=False, auto_delete=True):
         """Make named exchange."""
         return kombu.Exchange(name=name,
-                              durable=False,
-                              auto_delete=True)
+                              durable=durable,
+                              auto_delete=auto_delete)
 
     @staticmethod
-    def _make_queue(name, exchange):
+    def _make_queue(name, exchange, durable=False, auto_delete=True):
         """Make named queue for a given exchange."""
         return kombu.Queue(name=name,
                            exchange=exchange,
-                           durable=False,
-                           auto_delete=True)
+                           durable=durable,
+                           auto_delete=auto_delete)

@@ -57,6 +57,8 @@ class Proxy(base.Base):
     :keyword amqp_port: the port of the AMQP Broker
     :keyword ssl: use SSL connection for the AMQP Broker
     :keyword timeout: default timeout for calls in seconds
+    :keyword durable: make all exchanges and queues durable
+    :keyword auto_delete: delete queues after all connections are closed
     """
 
     def __init__(self,
@@ -67,7 +69,9 @@ class Proxy(base.Base):
                  amqp_vhost='/',
                  amqp_port=5672,
                  ssl=False,
-                 timeout=REQUEST_TIMEOUT):
+                 timeout=REQUEST_TIMEOUT,
+                 durable=False,
+                 auto_delete=True):
 
         super(Proxy, self).__init__(amqp_host, amqp_user, amqp_password,
                                     amqp_vhost, amqp_port, ssl)
@@ -79,12 +83,18 @@ class Proxy(base.Base):
         self._response = None
         self._exchange_name = 'client_{0}_ex_{1}'.format(amqp_user, self._uuid)
         self._queue_name = 'client_{0}_queue_{1}'.format(amqp_user, self._uuid)
+        self._durable = durable
+        self._auto_delete = auto_delete
 
         # create exchange
-        exchange = self._make_exchange(self._exchange_name)
+        exchange = self._make_exchange(self._exchange_name,
+                                       durable=self._durable,
+                                       auto_delete=self._auto_delete)
 
         # create queue
-        queue = self._make_queue(self._queue_name, exchange)
+        queue = self._make_queue(self._queue_name, exchange,
+                                 durable=self._durable,
+                                 auto_delete=self._auto_delete)
 
         # create consumer
         consumer = kombu.Consumer(channel=self._conn,
@@ -158,9 +168,13 @@ class Proxy(base.Base):
         # publish request
         with kombu.producers[self._conn].acquire(block=True) as producer:
             exchange = self._make_exchange(
-                'server_{0}_ex'.format(self._server_id))
+                'server_{0}_ex'.format(self._server_id),
+                durable=self._durable,
+                auto_delete=self._auto_delete)
             queue = self._make_queue(
-                'server_{0}_queue'.format(self._server_id), exchange)
+                'server_{0}_queue'.format(self._server_id), exchange,
+                durable=self._durable,
+                auto_delete=self._auto_delete)
             producer.publish(body=request,
                              serializer='pickle',
                              exchange=exchange,

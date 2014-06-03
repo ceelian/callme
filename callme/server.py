@@ -54,6 +54,8 @@ class Server(base.Base):
     :keyword threaded: use of multithreading, if set to true RPC call-execution
         will processed parallel (one thread per call) which dramatically
         improves performance
+    :keyword durable: make all exchanges and queues durable
+    :keyword auto_delete: delete queues after all connections are closed
     """
 
     def __init__(self,
@@ -64,12 +66,17 @@ class Server(base.Base):
                  amqp_vhost='/',
                  amqp_port=5672,
                  ssl=False,
-                 threaded=False):
+                 threaded=False,
+                 durable=False,
+                 auto_delete=True):
         super(Server, self).__init__(amqp_host, amqp_user, amqp_password,
-                                     amqp_vhost, amqp_port, ssl)
+                                     amqp_vhost, amqp_port, ssl,
+                                     )
         self._server_id = server_id
         self._threaded = threaded
         self._running = threading.Event()
+        self._durable = durable
+        self._auto_delete = auto_delete
         self._func_dict = {}
 
     @property
@@ -143,7 +150,9 @@ class Server(base.Base):
 
         LOG.debug("Publish response: {0}".format(response))
         with kombu.producers[self._conn].acquire(block=True) as producer:
-            exchange = self._make_exchange(reply_to)
+            exchange = self._make_exchange(reply_to,
+                                           durable=self._durable,
+                                           auto_delete=self._auto_delete)
             producer.publish(body=response,
                              serializer='pickle',
                              exchange=exchange,
@@ -168,9 +177,13 @@ class Server(base.Base):
         try:
             with kombu.connections[self._conn].acquire(block=True) as conn:
                 exchange = self._make_exchange(
-                    'server_{0}_ex'.format(self._server_id))
+                    'server_{0}_ex'.format(self._server_id),
+                    durable=self._durable,
+                    auto_delete=self._auto_delete)
                 queue = self._make_queue(
-                    'server_{0}_queue'.format(self._server_id), exchange)
+                    'server_{0}_queue'.format(self._server_id), exchange,
+                    durable=self._durable,
+                    auto_delete=self._auto_delete)
                 with conn.Consumer(queues=queue,
                                    callbacks=[self._on_request],
                                    accept=['pickle']):
