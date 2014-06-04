@@ -1,46 +1,37 @@
 import codecs
 import os
+import re
 import setuptools
-import sys
 
 
-sys.path.insert(0, 'src/')
-init_pyc = 'src/callme/__init__.pyc'
-if os.path.exists(init_pyc):
-    os.remove(init_pyc)
-
-import callme
-from callme import info
-
-
-if os.path.exists("doc/source/introduction.rst"):
-    long_description = codecs.open('doc/source/introduction.rst',
-                                   "r", "utf-8").read()
-else:
-    long_description = "See " + callme.__homepage__
-
-
-setuptools_options = {
-    'test_suite': 'callme.tests.suite',
-    'zip_safe': True,
-}
+def read_version():
+    regexp = re.compile(r"^__version__\W*=\W*'([\d.]+)'")
+    init_py = os.path.join(os.path.dirname(__file__), 'callme', '__init__.py')
+    with open(init_py) as fp:
+        for line in fp:
+            match = regexp.match(line)
+            if match is not None:
+                return match.group(1)
+        else:
+            raise RuntimeError('Cannot find version in callme/__init__.py')
 
 
 setuptools.setup(
     name="callme",
-    version=info.__version__,
-    packages=setuptools.find_packages('src'),
-    package_dir={'': 'src'},
+    version=read_version(),
+    packages=setuptools.find_packages('callme'),
+    package_dir={'': 'callme'},
     install_requires=['kombu>=3.0.0'],
 
     # metadata for upload to PyPI
-    author=info.__author__,
-    author_email=info.__contact__,
-    description=info.__doc__,
-    long_description=long_description,
+    author="Christian Haintz",
+    author_email="christian.haintz@orangelabs.at",
+    description="Python AMQP RPC module",
+    long_description=codecs.open("doc/source/introduction.rst", "r",
+                                 "utf-8").read(),
     keywords="amqp rpc",
     platforms=["any"],
-    url=info.__homepage__,
+    url="http://packages.python.org/callme",
     license='BSD',
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -55,5 +46,5 @@ setuptools.setup(
         "Topic :: System :: Networking",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    **setuptools_options
+    zip_safe=True,
 )

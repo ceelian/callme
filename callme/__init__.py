@@ -29,9 +29,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-VERSION = (0, 1, 1)
-__version__ = ".".join(map(str, VERSION))
-__author__ = "Christian Haintz"
-__contact__ = "christian.haintz@orangelabs.at"
-__homepage__ = "http://packages.python.org/callme"
-__docformat__ = "restructuredtext"
+from callme.proxy import Proxy      # noqa
+from callme.server import Server    # noqa
+
+__version__ = '0.1.1'
