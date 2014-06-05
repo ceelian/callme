@@ -151,7 +151,7 @@ class Server(base.Base):
         with kombu.producers[self._conn].acquire(block=True) as producer:
             exchange = self._make_exchange(reply_to,
                                            durable=self._durable,
-                                           auto_delete=self._auto_delete)
+                                           auto_delete=True)
             producer.publish(body=response,
                              serializer='pickle',
                              exchange=exchange,

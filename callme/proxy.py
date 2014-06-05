@@ -58,7 +58,8 @@ class Proxy(base.Base):
     :keyword ssl: use SSL connection for the AMQP Broker
     :keyword timeout: default timeout for calls in seconds
     :keyword durable: make all exchanges and queues durable
-    :keyword auto_delete: delete queues after all connections are closed
+    :keyword auto_delete: delete server queues after all connections are closed
+        not applicable for client queues
     """
 
     def __init__(self,
@@ -89,12 +90,12 @@ class Proxy(base.Base):
         # create exchange
         exchange = self._make_exchange(self._exchange_name,
                                        durable=self._durable,
-                                       auto_delete=self._auto_delete)
+                                       auto_delete=True)
 
         # create queue
         queue = self._make_queue(self._queue_name, exchange,
                                  durable=self._durable,
-                                 auto_delete=self._auto_delete)
+                                 auto_delete=True)
 
         # create consumer
         consumer = kombu.Consumer(channel=self._conn,
