@@ -70,8 +70,7 @@ class Server(base.Base):
                  durable=False,
                  auto_delete=True):
         super(Server, self).__init__(amqp_host, amqp_user, amqp_password,
-                                     amqp_vhost, amqp_port, ssl,
-                                     )
+                                     amqp_vhost, amqp_port, ssl)
         self._server_id = server_id
         self._threaded = threaded
         self._running = threading.Event()
