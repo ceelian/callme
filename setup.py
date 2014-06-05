@@ -19,8 +19,7 @@ def read_version():
 setuptools.setup(
     name="callme",
     version=read_version(),
-    packages=setuptools.find_packages('callme'),
-    package_dir={'': 'callme'},
+    packages=setuptools.find_packages(),
     install_requires=['kombu>=3.0.0'],
 
     # metadata for upload to PyPI

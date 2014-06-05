@@ -8,4 +8,4 @@ include THANKS
 include TODO
 include Changelog
 recursive-include doc *
-recursive-include src/callme *.py
+recursive-include callme *.py
