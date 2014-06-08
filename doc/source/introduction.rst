@@ -173,7 +173,7 @@ The git repository is available at `github.com callme`_.
 
 Installation
 ------------
-``callme`` can be installed via the Python Package Index of from source.
+``callme`` can be installed via the Python Package Index or from source.
 
 Using ``easy_install`` to install ``callme``::
 
@@ -183,8 +183,7 @@ Using ``pip`` to install ``callme``::
 
     $ pip install callme
 
-If you have downloaded a source tarball you can install it by doing the
-following::
+If you have downloaded a source tarball you can install it as follows::
 
     $ python setup.py build
     $ python setup.py install
