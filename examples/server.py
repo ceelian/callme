@@ -31,14 +31,41 @@
 
 import callme
 import logging
-logging.basicConfig(level=logging.INFO)
 
 
 def add(a, b):
+    """Adds two numbers and returns the result.
+
+    This add two numbers and return result. You will want to use this function
+    in any place you would usually use the ``+`` operator but requires
+    a functional equivalent.
+    :param a: The first number to add
+    :param b: The second number to add
+    :return: The result of the addition
+    :Example:
+    >>> add(3, 2)
+    5
+    """
     return a + b
 
 
+def fib(n):
+    """Calculate Fibonacci sequence.
+
+    :param n: number
+    :Example:
+    >>> fib(10)
+    55
+    """
+    if n <= 1:
+        return n
+    else:
+        return fib(n-1) + fib(n-2)
+
+
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     server = callme.Server(server_id='fooserver')
     server.register_function(add, 'add')
+    server.register_function(fib, 'fib')
     server.start()
