@@ -29,8 +29,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import callme
 import logging
+
+import callme
 
 
 def add(a, b):
@@ -60,7 +61,7 @@ def fib(n):
     if n <= 1:
         return n
     else:
-        return fib(n-1) + fib(n-2)
+        return fib(n - 1) + fib(n - 2)
 
 
 if __name__ == "__main__":

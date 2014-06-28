@@ -46,8 +46,7 @@ class RpcRequest(object):
 
 
 class RpcResponse(object):
-    """This class is used to transport the RPC Response from the server
-    back to the client.
+    """This class is used to transport the RPC Response to the client.
 
     :keyword result: the result of the rpc call on the server
     """

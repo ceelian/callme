@@ -29,11 +29,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import kombu
 import logging
 import socket
 import time
 import uuid
+
+import kombu
 
 from callme import base
 from callme import exceptions as exc
@@ -217,7 +218,7 @@ class Proxy(base.Base):
         LOG.debug("Recursion: {0}".format(name))
         return _Method(self.__request, name)
 
-#===========================================================================
+# ===========================================================================
 
 
 class _Method:
@@ -238,4 +239,4 @@ class _Method:
     def __call__(self, *args):
         return self._send(self._name, args)
 
-#===========================================================================
+# ===========================================================================

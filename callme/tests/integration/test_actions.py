@@ -29,10 +29,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import callme
 import threading
 import time
 
+import callme
 from callme import exceptions as exc
 from callme import test
 
@@ -104,7 +104,7 @@ class ActionsTestCase(test.TestCase):
                 threads.append(t)
 
             # wait until all threads are finished
-            [t.join() for t in threads]
+            [thread.join() for thread in threads]
         finally:
             server.stop()
         p.join()
@@ -137,7 +137,7 @@ class ActionsTestCase(test.TestCase):
                 threads.append(t)
 
             # wait until all threads are finished
-            [t.join() for t in threads]
+            [thread.join() for thread in threads]
         finally:
             server.stop()
         p.join()

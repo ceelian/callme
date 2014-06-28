@@ -29,10 +29,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import kombu
 import logging
 import socket
 import threading
+
+import kombu
 
 from callme import base
 from callme import exceptions as exc
