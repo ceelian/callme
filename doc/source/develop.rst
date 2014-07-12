@@ -20,7 +20,7 @@ In the shell::
 
 Change Version
 ++++++++++++++
-Change the version in ``src/callme/info.py``.
+Change the version in ``callme/__init__.py``.
 Add changelog in ``CHANGELOG``.
 
 

@@ -32,4 +32,4 @@
 from callme.proxy import Proxy      # noqa
 from callme.server import Server    # noqa
 
-__version__ = '0.1.1'
+__version__ = '0.2.0'

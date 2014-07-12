@@ -205,6 +205,8 @@ Contributors (chronological order)
 - mkisto (https://github.com/mkisto)
 - carletes (https://github.com/carletes)
 - skudriashev (https://github.com/skudriashev)
+- venkat-tenmiles (https://github.com/venkat-tenmiles)
+- femtotrader (https://github.com/femtotrader)
 
 
 License
