@@ -26,6 +26,11 @@ Add changelog in ``CHANGELOG``.
 
 Commit and Tag
 ++++++++++++++
+
+Prerequisites for this is with pip (syspip):
+  * sphinx
+  * Sphinx-PyPI-upload
+
 In the shell::
 
     # clean stuff
