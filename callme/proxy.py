@@ -154,17 +154,18 @@ class Proxy(base.Base):
             except KeyError:
                 LOG.error("Message has no `correlation_id` property.")
 
-    def __request(self, func_name, func_args):
+    def __request(self, func_name, func_args, func_kwargs):
         """The remote-method-call execution function.
 
         :param func_name: name of the method that should be executed
-        :param func_args: parameter for the remote-method
+        :param func_args: arguments for the remote-method
+        :param func_kwargs: keyword arguments for the remote-method
         :type func_name: string
         :type func_args: list of parameters
         :rtype: result of the method
         """
         self._corr_id = str(uuid.uuid4())
-        request = pr.RpcRequest(func_name, func_args)
+        request = pr.RpcRequest(func_name, func_args, func_kwargs)
         LOG.debug("Publish request: {0}".format(request))
 
         # publish request
@@ -236,7 +237,7 @@ class _Method:
     def __getattr__(self, name):
         return _Method(self._send, "{0}.{1}".format(self._name, name))
 
-    def __call__(self, *args):
-        return self._send(self._name, args)
+    def __call__(self, *args, **kw):
+        return self._send(self._name, args, kw)
 
 # ===========================================================================

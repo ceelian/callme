@@ -35,14 +35,16 @@ class RpcRequest(object):
 
     :keyword func_name: the rpc function name (= method name)
     :keyword func_args: the arguments for the function
+    :keyword func_keywords: keyword arguments for the function
     """
-    def __init__(self, func_name, func_args):
+    def __init__(self, func_name, func_args, func_kwargs):
         self.func_name = func_name
         self.func_args = func_args
+        self.func_kwargs = func_kwargs
 
     def __str__(self):
-        return ("<RpcRequest(func_name={0}, func_args={1})>"
-                .format(self.func_name, self.func_args))
+        return ("<RpcRequest(func_name={0}, func_args={1}, func_kwargs={2})>"
+                .format(self.func_name, self.func_args, self.func_kwargs))
 
 
 class RpcResponse(object):

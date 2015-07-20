@@ -37,9 +37,11 @@ class TestRpcRequest(test.TestCase):
 
     def test_creation(self):
         func_args = {'arg1': 3, 'arg2': 7}
-        request = protocol.RpcRequest('func_name', func_args)
+        func_kwargs = {'kw1': 1, 'kw2': 2}
+        request = protocol.RpcRequest('func_name', func_args, func_kwargs)
         self.assertEqual(request.func_name, 'func_name')
         self.assertEqual(request.func_args, func_args)
+        self.assertEqual(request.func_kwargs, func_kwargs)
 
 
 class TestRpcResponse(test.TestCase):
