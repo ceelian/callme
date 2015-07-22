@@ -222,7 +222,7 @@ class Proxy(base.Base):
 # ===========================================================================
 
 
-class _Method:
+class _Method(object):
     """This class is used to realize remote-method-calls.
 
     :param send: name of the function that should be executed on Proxy

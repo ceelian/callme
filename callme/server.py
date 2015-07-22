@@ -139,8 +139,10 @@ class Server(base.Base):
 
         # execute function
         try:
-            LOG.debug("Call function with args {!r}, kwargs {!r}".format(request.func_args, request.func_kwargs))
-            result = self._func_dict[request.func_name](*request.func_args, **request.func_kwargs)
+            LOG.debug("Call function with args {!r}, kwargs {!r}".format(
+                request.func_args, request.func_kwargs))
+            result = self._func_dict[request.func_name](*request.func_args,
+                                                        **request.func_kwargs)
         except Exception as e:
             LOG.error("Exception happened: {0}".format(e))
             response = pr.RpcResponse(e)
