@@ -38,9 +38,10 @@ result::
 
     import callme
 
-    proxy = callme.Proxy(amqp_host='localhost')
+    proxy = callme.Proxy(server_id='fooserver',
+                         amqp_host='localhost')
 
-    print proxy.use_server('fooserver').add(1, 1)
+    print proxy.add(1, 1)
 
 There are optional parameters to fit different needs which are explained in depth
 in the Server and Proxy Documentation.
